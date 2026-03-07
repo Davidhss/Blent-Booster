@@ -1,14 +1,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
+// Tenta pegar a chave do VITE_GEMINI_API_KEY primeiro (para o frontend em produção)
+// E cai de volta para process.env.GEMINI_API_KEY no Dev SSR/Node
 const getApiKey = () => {
-  return (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ||
-    (import.meta.env?.VITE_GEMINI_API_KEY) ||
-    (import.meta.env?.GEMINI_API_KEY) ||
+  const key = import.meta.env?.VITE_GEMINI_API_KEY ||
+    (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ||
     "";
+
+  if (!key) {
+    console.error("FATAL ERROR: VITE_GEMINI_API_KEY is not defined in the environment! The app will crash.");
+  }
+  return key;
 };
 
 const ai = new GoogleGenAI({
-  apiKey: getApiKey(),
+  apiKey: getApiKey() || 'dummy_key_to_prevent_crash', // Fallback to prevent immediate crash if key is missing, although requests will fail
 });
 
 export const analyzePostStyle = async (imageData: string) => {
