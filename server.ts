@@ -107,6 +107,41 @@ const PACK_PRICE_IDS: Record<string, string> = {
 };
 
 // =============================================
+// Helper: Send Beautiful Email via SendGrid
+// =============================================
+const sendEmailViaSendGrid = async (toEmail: string, subject: string, htmlContent: string) => {
+  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
+  if (!SENDGRID_API_KEY) {
+    console.error("SENDGRID_API_KEY is not defined. No email sent.");
+    return;
+  }
+
+  try {
+    const sendgridRes = await fetch("https://api.sendgrid.com/v3/mail/send", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${SENDGRID_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        personalizations: [{ to: [{ email: toEmail }], subject: subject }],
+        from: { email: "contato@assessoriablent.com", name: "BlentBoost" },
+        content: [{ type: "text/html", value: htmlContent }]
+      })
+    });
+
+    if (!sendgridRes.ok) {
+      const sendgridErr = await sendgridRes.text();
+      console.error("Erro ao enviar e-mail via SendGrid:", sendgridErr);
+    } else {
+      console.log(`Email '${subject}' enviado para ${toEmail} com sucesso!`);
+    }
+  } catch (e) {
+    console.error("Erro fatal ao enviar email:", e);
+  }
+};
+
+// =============================================
 // STRIPE WEBHOOK   must be before express.json()
 // =============================================
 app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async (req, res) => {
@@ -158,6 +193,82 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
             description: `Plano ${planType}   ${tokens} tokens concedidos`,
           });
           console.log(`  Subscription activated for user ${userId}. Plan: ${planType}. Tokens set to: ${tokens}`);
+
+          // Fetch user email to send welcome message
+          try {
+            const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
+            if (user && user.email) {
+              const welcomeHtml = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo ao BlentBoost</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #06060f; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #06060f;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table width="100%" max-width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #14141e; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; overflow: hidden;">
+                    <!-- HEADER -->
+                    <tr>
+                        <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                            <div style="display: inline-block; background: linear-gradient(135deg, #8b5cf6, #7e22ce); padding: 14px 16px; border-radius: 16px; margin-bottom: 24px;">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white"/>
+                                </svg>
+                            </div>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 900; letter-spacing: -0.5px;">Você agora é um Booster! 🚀</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- BODY -->
+                    <tr>
+                        <td style="padding: 20px 40px 40px 40px;">
+                            <p style="margin: 0 0 24px 0; color: rgba(255, 255, 255, 0.7); font-size: 16px; line-height: 1.6;">
+                                Olá! Seu pagamento do plano <strong style="color: #ffffff; text-transform: uppercase;">${planType}</strong> foi confirmado! A sua conta já foi atualizada e liberada com sucesso.
+                            </p>
+                            <p style="margin: 0 0 32px 0; color: rgba(255, 255, 255, 0.7); font-size: 16px; line-height: 1.6;">
+                                Prepare-se para criar conteúdos magnéticos e dominar o algoritmo. Aqui estão os seus próximos passos para extrair o máximo do BlentBoost:
+                            </p>
+
+                            <div style="background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; margin-bottom: 32px;">
+                                <h3 style="margin: 0 0 16px 0; color: #ffffff; font-size: 18px;">🛠️ Primeiros Passos:</h3>
+                                <ul style="margin: 0; padding-left: 20px; color: rgba(255,255,255,0.7); line-height: 1.6;">
+                                    <li style="margin-bottom: 12px;">Acesse a plataforma e conecte sua conta do Instagram.</li>
+                                    <li style="margin-bottom: 12px;">Preencha seu perfil para que a IA entenda seu tom de voz e estilo.</li>
+                                    <li>Gere seu primeiro post viral em segundos!</li>
+                                </ul>
+                            </div>
+                            
+                            <div style="text-align: center;">
+                                <a href="${process.env.VITE_APP_URL || 'https://app.assessoriablent.com'}" style="display: inline-block; background: linear-gradient(to right, #8b5cf6, #7e22ce); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 800; padding: 16px 32px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 8px 16px rgba(139, 92, 246, 0.3);">
+                                    ACESSAR O BLENTBOOST
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- FOOTER -->
+                    <tr>
+                        <td style="padding: 24px 40px; background-color: rgba(0, 0, 0, 0.2); border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center;">
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.3); font-size: 12px;">
+                                &copy; 2026 BlentBoost. Todos os direitos reservados.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`;
+              await sendEmailViaSendGrid(user.email, "Bem-vindo(a) ao BlentBoost! 🎉", welcomeHtml);
+            }
+          } catch (e) {
+            console.error("Failed to send welcome email:", e);
+          }
         }
       } else if (purchaseType === 'token_pack') {
         const packType = session.metadata?.pack_type || 'starter';
@@ -776,22 +887,56 @@ app.post("/api/bug-report", async (req, res) => {
   }
 
   try {
-    if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587', 10),
-        secure: process.env.SMTP_PORT === '465',
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-      });
+    const bugHtml = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Bug - BlentBoost</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #06060f; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #06060f;">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                <table width="100%" max-width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #1a0f14; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 24px; overflow: hidden;">
+                    <!-- HEADER -->
+                    <tr>
+                        <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                            <div style="display: inline-block; background: linear-gradient(135deg, #ef4444, #b91c1c); padding: 14px 16px; border-radius: 16px; margin-bottom: 24px;">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: white;">
+                                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                            </div>
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">Novo Bug Reportado no BlentBoost</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- BODY -->
+                    <tr>
+                        <td style="padding: 20px 40px 40px 40px;">
+                            <div style="background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+                                <p style="margin: 0 0 12px 0; color: rgba(255, 255, 255, 0.7); font-size: 14px;"><strong>Usuário:</strong> <span style="color: #ffffff;">${userEmail}</span></p>
+                                <p style="margin: 0; color: rgba(255, 255, 255, 0.7); font-size: 14px;"><strong>Ferramenta:</strong> <span style="color: #fca5a5; font-weight: bold;">${tool}</span></p>
+                            </div>
 
-      await transporter.sendMail({
-        from: `"Creator Boost App" <${process.env.SMTP_USER}>`,
-        to: 'assessoriablent@gmail.com',
-        subject: `Alerta de Bug no CreatorBoost - ${tool}`,
-        text: `Usuário: ${userEmail}\n\nFerramenta: ${tool}\n\nDescrição do Bug:\n${description}`,
-        html: `<p><strong>Usuário:</strong> ${userEmail}</p><p><strong>Ferramenta:</strong> ${tool}</p><h3>Descrição do Bug:</h3><p>${description.replace(/\\n/g, '<br/>')}</p>`
-      });
-    }
+                            <div style="background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px;">
+                                <h3 style="margin: 0 0 16px 0; color: #ffffff; font-size: 16px;">Descrição do Problema:</h3>
+                                <p style="margin: 0; color: rgba(255, 255, 255, 0.8); font-size: 15px; line-height: 1.6; white-space: pre-wrap;">${description}</p>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`;
+
+    await sendEmailViaSendGrid('assessoriablent@gmail.com', `Alerta de Bug no CreatorBoost - ${tool}`, bugHtml);
+
     res.json({ success: true });
   } catch (error: any) {
     console.error("Email send error:", error.message);
