@@ -1,5 +1,4 @@
 import express from "express";
-import Database from "better-sqlite3";
 import * as dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import Stripe from "stripe";
@@ -29,46 +28,6 @@ const supabaseAdmin = createClient(
   process.env.VITE_SUPABASE_URL || "",
   serviceRoleKey || process.env.VITE_SUPABASE_ANON_KEY || ""
 );
-
-const db = new Database("database.sqlite");
-
-// Initialize DB
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE,
-    name TEXT,
-    handle TEXT,
-    avatarUrl TEXT,
-    bio TEXT
-  );
-
-  CREATE TABLE IF NOT EXISTS library (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_email TEXT,
-    type TEXT,
-    content TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS bug_reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_email TEXT,
-    tool TEXT,
-    description TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS leads (
-    id TEXT PRIMARY KEY,
-    name TEXT,
-    email TEXT,
-    phone TEXT,
-    plan_name TEXT,
-    plan_price TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
 
 const app = express();
 const PORT = parseInt(process.env.API_PORT || '3001', 10);
@@ -750,42 +709,52 @@ app.get("/api/admin/transactions/:userId", async (req, res) => {
 // =============================================
 // EXISTING API Routes
 // =============================================
-app.get("/api/profile/:email", (req, res) => {
+app.get("/api/profile/:email", async (req, res) => {
   const { email } = req.params;
-  const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  const { data: user } = await supabaseAdmin.from('users').select('*').eq('email', email).single();
   if (user) {
     res.json(user);
   } else {
-    const stmt = db.prepare("INSERT INTO users (email, name, handle, avatarUrl) VALUES (?, ?, ?, ?)");
-    stmt.run(email, "Seu Nome", "seu_arroba", "https://picsum.photos/seed/user/200/200");
-    const newUser = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
-    res.json(newUser);
+    const { data: newUser } = await supabaseAdmin.from('users').insert({
+      email, name: "Seu Nome", handle: "seu_arroba", avatarUrl: "https://picsum.photos/seed/user/200/200"
+    }).select().single();
+    res.json(newUser || {});
   }
 });
 
-app.post("/api/profile", (req, res) => {
+app.post("/api/profile", async (req, res) => {
   const { email, name, handle, avatarUrl, bio } = req.body;
-  const stmt = db.prepare("UPDATE users SET name = ?, handle = ?, avatarUrl = ?, bio = ? WHERE email = ?");
-  stmt.run(name, handle, avatarUrl, bio, email);
+  await supabaseAdmin.from('users').update({
+    name, handle, avatarUrl, bio
+  }).eq('email', email);
   res.json({ success: true });
 });
 
-app.get("/api/library/:email", (req, res) => {
+app.get("/api/library/:email", async (req, res) => {
   const { email } = req.params;
-  const items = db.prepare("SELECT * FROM library WHERE user_email = ? ORDER BY created_at DESC").all(email);
-  res.json(items.map((item: any) => ({ ...item, content: JSON.parse(item.content as string) })));
+  const { data: items } = await supabaseAdmin.from('library').select('*').eq('user_email', email).order('created_at', { ascending: false });
+  if (items) {
+    res.json(items.map((item: any) => {
+      try {
+        return { ...item, content: typeof item.content === 'string' ? JSON.parse(item.content) : item.content };
+      } catch (e) { return item; }
+    }));
+  } else {
+    res.json([]);
+  }
 });
 
-app.post("/api/library", (req, res) => {
+app.post("/api/library", async (req, res) => {
   const { email, type, content } = req.body;
-  const stmt = db.prepare("INSERT INTO library (user_email, type, content) VALUES (?, ?, ?)");
-  stmt.run(email, type, JSON.stringify(content));
+  await supabaseAdmin.from('library').insert({
+    user_email: email, type, content: typeof content === 'string' ? JSON.parse(content) : content
+  });
   res.json({ success: true });
 });
 
-app.delete("/api/library/:id", (req, res) => {
+app.delete("/api/library/:id", async (req, res) => {
   const { id } = req.params;
-  db.prepare("DELETE FROM library WHERE id = ?").run(id);
+  await supabaseAdmin.from('library').delete().eq('id', id);
   res.json({ success: true });
 });
 
@@ -798,8 +767,10 @@ app.post("/api/bug-report", async (req, res) => {
   }
 
   try {
-    const stmt = db.prepare("INSERT INTO bug_reports (user_email, tool, description) VALUES (?, ?, ?)");
-    stmt.run(userEmail || 'Desconhecido', tool, description);
+    const { error } = await supabaseAdmin.from('bug_reports').insert({
+      user_email: userEmail || 'Desconhecido', tool, description
+    });
+    if (error) throw error;
   } catch (dbErr) {
     console.error("Failed to save bug report to DB:", dbErr);
   }
@@ -838,8 +809,10 @@ app.post("/api/lead", async (req, res) => {
 
   try {
     const leadId = Math.random().toString(36).substring(2, 11);
-    const stmt = db.prepare('INSERT INTO leads (id, name, email, phone, plan_name, plan_price) VALUES (?, ?, ?, ?, ?, ?)');
-    stmt.run(leadId, name, email, phone, plan, price);
+    const { error } = await supabaseAdmin.from('leads').insert({
+      id: leadId, name, email, phone, plan_name: plan, plan_price: price
+    });
+    if (error) throw error;
 
     if (process.env.SMTP_HOST && process.env.SMTP_USER) {
       const transporter = nodemailer.createTransport({
