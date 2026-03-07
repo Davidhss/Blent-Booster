@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sua vaga está garantida | Blent Boost</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Shared Styles -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Specific Styles -->
+    <link rel="stylesheet" href="obrigado.css">
+</head>
+
+<body>
+    <!-- Ambient Light Background -->
+    <div class="pointer-glow" id="pointer-glow"></div>
+    <div class="ambient-background">
+        <div class="flare flare-1"></div>
+        <div class="flare flare-2"></div>
+        <div class="dots-grid"></div>
+    </div>
+
+    <nav class="navbar">
+        <div class="container nav-content text-center" style="justify-content: center;">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="zap" fill="white"></i>
+                </div>
+                <div class="logo-text">Blent<span>Boost</span></div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="thank-you-main">
+        <div class="container text-center">
+
+            <div class="success-anim-container reveal">
+                <div class="success-circle">
+                    <i data-lucide="check"></i>
+                </div>
+                <div class="pulse-rings">
+                    <div class="ring"></div>
+                    <div class="ring delay"></div>
+                </div>
+            </div>
+
+            <div class="badge-new reveal" style="margin-top: 40px;">
+                <span>VAGA VIP RESERVADA COM SUCESSO</span>
+            </div>
+
+            <h1 class="hero-headline reveal">
+                Bem-vindo à <br>
+                <span class="gradient-text">Nova Era da Criação.</span>
+            </h1>
+
+            <p class="hero-subline reveal">
+                O seu e-mail foi confirmado na nossa lista prioritária. Mas atenção: os <strong>10 bônus de créditos
+                    ilimitados</strong> serão disputados no nosso grupo fechado.
+            </p>
+
+            <div class="next-steps-bento stagger-reveal">
+
+                <div class="bento-step glass-card step-highlight tilt-card float-anim">
+                    <div class="tilt-inner">
+                        <div class="step-number">PASSO 1 - ESSENCIAL</div>
+                        <div class="step-icon whatsapp-bg"><i data-lucide="message-circle"></i></div>
+                        <h3>Entre no Grupo VIP Oficial</h3>
+                        <p>É lá que enviaremos o link de acesso antecipado antes de todo mundo. Quem não estiver no
+                            grupo, ficará de fora.</p>
+                        <a href="https://chat.whatsapp.com/LIjFFJLJaRL2LDhK9PdEoo?mode=gi_t"
+                            class="btn btn-block btn-large btn-whatsapp">
+                            ACESSAR GRUPO VIP EXCLUSIVO
+                        </a>
+                    </div>
+                </div>
+
+                <div class="bento-side-steps">
+                    <div class="bento-step glass-card tilt-card float-anim delay-1">
+                        <div class="tilt-inner row-layout">
+                            <div class="step-icon mail-bg"><i data-lucide="mail"></i></div>
+                            <div class="step-content">
+                                <h3>Verifique seu E-mail</h3>
+                                <p>Enviamos uma confirmação. Verifique a caixa de Spam ou Promoções.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bento-step glass-card tilt-card float-anim delay-2">
+                        <div class="tilt-inner row-layout">
+                            <div class="step-icon insta-bg"><i data-lucide="instagram"></i></div>
+                            <div class="step-content">
+                                <h3>Siga-nos no Instagram</h3>
+                                <p>Cobrimos os bastidores do desenvolvimento e entregamos hacks diários.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="obrigado.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

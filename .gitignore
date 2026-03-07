@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+check_db.ts
+server_out.txt
+git-cred.sh
+push_err.txt
+push_output.txt

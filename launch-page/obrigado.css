@@ -1,0 +1,215 @@
+/* ── OBRIGADO PAGE SPECIFIC ─────────────────── */
+.thank-you-main {
+    padding-top: 15vh;
+    padding-bottom: 100px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.success-anim-container {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.success-circle {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--accent-emerald), #059669);
+    border-radius: 50%;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 15px 35px rgba(16, 185, 129, 0.4);
+    animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.success-circle i {
+    color: white;
+    width: 40px;
+    height: 40px;
+    stroke-width: 3;
+}
+
+.pulse-rings .ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid var(--accent-emerald);
+    opacity: 0;
+    z-index: 1;
+    animation: ring-pulse 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.pulse-rings .ring.delay {
+    animation-delay: 1s;
+}
+
+@keyframes pop-in {
+    0% {
+        transform: scale(0);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes ring-pulse {
+    0% {
+        width: 80px;
+        height: 80px;
+        opacity: 1;
+        border-width: 4px;
+    }
+
+    100% {
+        width: 200px;
+        height: 200px;
+        opacity: 0;
+        border-width: 1px;
+    }
+}
+
+.next-steps-bento {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    max-width: 900px;
+    margin: 60px auto 0;
+    text-align: left;
+}
+
+.bento-side-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.bento-step .tilt-inner {
+    padding: 30px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.bento-step.step-highlight {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(16, 185, 129, 0.05));
+    border-color: rgba(16, 185, 129, 0.2);
+}
+
+.bento-step.step-highlight:hover {
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 30px 60px rgba(16, 185, 129, 0.15);
+}
+
+.step-number {
+    font-size: 11px;
+    font-weight: 900;
+    color: var(--accent-emerald);
+    letter-spacing: 2px;
+    margin-bottom: 25px;
+}
+
+.step-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.step-icon i {
+    color: white;
+    width: 24px;
+    height: 24px;
+}
+
+.whatsapp-bg {
+    background: linear-gradient(135deg, #25D366, #128C7E);
+    box-shadow: 0 10px 20px rgba(37, 211, 102, 0.3);
+}
+
+.mail-bg {
+    background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+    box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+}
+
+.insta-bg {
+    background: linear-gradient(135deg, #f58529, #dd2a7b, #8134af, #515bd4);
+    box-shadow: 0 10px 20px rgba(221, 42, 123, 0.3);
+}
+
+.bento-step h3 {
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+
+.bento-step p {
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 30px;
+    flex: 1;
+    /* Pushes button to bottom */
+}
+
+.btn-whatsapp {
+    background: linear-gradient(135deg, #25D366, #128C7E);
+    color: white;
+    border: none;
+    box-shadow: 0 10px 30px rgba(37, 211, 102, 0.3);
+}
+
+.btn-whatsapp:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(37, 211, 102, 0.5);
+}
+
+.row-layout {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 24px;
+}
+
+.row-layout .step-icon {
+    margin-bottom: 0;
+    flex-shrink: 0;
+}
+
+.row-layout h3 {
+    font-size: 18px;
+    margin-bottom: 6px;
+}
+
+.row-layout p {
+    font-size: 14px;
+    margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+    .next-steps-bento {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .row-layout {
+        flex-direction: column !important;
+        text-align: center;
+        align-items: center;
+    }
+}
