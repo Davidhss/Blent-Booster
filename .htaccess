@@ -1,0 +1,11 @@
+# .htaccess - Hostinger Node.js Redirect
+RewriteEngine On
+
+# Ensure the request is not for a real file or directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Pass all requests to the entry point (Hostinger handles the proxying to Node)
+# If Hostinger's Node.js tool is used, sometimes this file is handled 
+# automatically, but adding it ensures the /api routes work correctly.
+RewriteRule ^(.*)$ entry.js [L]
