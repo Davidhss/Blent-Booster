@@ -96,7 +96,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ open, onComple
                         {/* Decorative glow */}
                         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-56 bg-violet-600/15 blur-[90px] rounded-full pointer-events-none" />
 
-                        <div className="relative z-10 p-8">
+                        <div className="relative z-10 p-6 md:p-8">
                             {/* Header */}
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center shadow-lg shadow-violet-500/20">
@@ -141,7 +141,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ open, onComple
                                                 <Target className="w-5 h-5 text-violet-400" />
                                                 <h3 className="text-xl font-black text-white">Qual o seu nicho de atuação?</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                                                 {NICHES.map(n => (
                                                     <button
                                                         key={n}
@@ -222,7 +222,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({ open, onComple
                                                 <Calendar className="w-5 h-5 text-violet-400" />
                                                 <h3 className="text-xl font-black text-white">Com que frequência você posta nas redes sociais?</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-3">
                                                 {FREQUENCIES.map(f => (
                                                     <button
                                                         key={f.value}

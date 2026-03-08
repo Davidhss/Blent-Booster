@@ -198,7 +198,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-8">
+    <div className="max-w-6xl mx-auto p-4 md:p-8">
       <div className="flex flex-col lg:flex-row gap-10">
         {/* Left: Profile Card & Navigation */}
         <div className="lg:w-80 shrink-0 space-y-6">

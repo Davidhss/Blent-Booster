@@ -100,13 +100,38 @@ export const AdminDashboard: React.FC = () => {
   const fetchForms = async () => {
     setLoadingForms(true);
     try {
-      const { data, error } = await supabase
+      const { data: insightsData, error: insightsError } = await supabase
         .from('user_insights')
-        .select('*, profiles(name, email)')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setForms(data || []);
-    } catch {
+        .select('*');
+      if (insightsError) throw insightsError;
+
+      const insights = insightsData || [];
+      if (insights.length === 0) {
+        setForms([]);
+        return;
+      }
+
+      const userIds = insights.map(i => i.user_id).filter(Boolean);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      const profileMap = (profilesData || []).reduce((acc: any, p) => {
+        acc[p.id] = p;
+        return acc;
+      }, {});
+
+      const enrichedForms = insights.map(i => ({
+        ...i,
+        profiles: profileMap[i.user_id] || { name: 'Desconhecido', email: 'N/A' }
+      }));
+
+      setForms(enrichedForms);
+    } catch (err: any) {
+      console.error('Error fetching forms:', err);
       toast.error('Erro ao carregar formulários.');
     } finally {
       setLoadingForms(false);

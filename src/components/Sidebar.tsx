@@ -64,16 +64,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTool, setCurrentTool, u
   }, []);
 
   return (
-    <aside className="w-[72px] bg-[#0d0d12] border-r border-white/[0.06] flex flex-col items-center py-6 gap-4 sticky top-0 h-screen z-50 shrink-0">
+    <aside className="fixed bottom-0 left-0 right-0 h-16 md:h-screen md:sticky md:top-0 md:w-[72px] bg-[#0d0d12] border-t md:border-t-0 md:border-r border-white/[0.06] flex flex-row md:flex-col items-center justify-between md:justify-start px-2 md:px-0 py-2 md:py-6 gap-2 md:gap-4 z-50 shrink-0">
       {/* Logo */}
-      <div className="w-10 h-10 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
+      <div className="hidden md:flex w-10 h-10 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl items-center justify-center shadow-lg shadow-violet-500/20 shrink-0">
         <Zap className="w-5 h-5 text-white" />
       </div>
 
       {/* Divider */}
-      <div className="w-8 h-px bg-white/[0.06]" />
+      <div className="hidden md:block w-8 h-px bg-white/[0.06]" />
 
-      <nav className="flex flex-col gap-2 flex-1 w-full px-3 overflow-y-auto custom-scrollbar">
+      <nav className="flex flex-row md:flex-col gap-1 md:gap-2 flex-1 md:w-full md:px-3 overflow-x-auto md:overflow-x-visible overflow-y-hidden md:overflow-y-auto custom-scrollbar items-center">
         {NAV_ITEMS.filter(item => {
           // Admin sees everything
           if (isAdmin) return true;
@@ -117,18 +117,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTool, setCurrentTool, u
               id={`sidebar-${item.id}`}
               onClick={() => setCurrentTool(item.id as ToolType)}
               className={cn(
-                "relative w-12 h-12 rounded-2xl transition-all duration-200 group flex items-center justify-center mx-auto",
+                "relative w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl transition-all duration-200 group flex items-center justify-center shrink-0 md:mx-auto",
                 isActive
                   ? "bg-white/10 shadow-inner"
                   : "text-white/30 hover:bg-white/5 hover:text-white/70"
               )}
             >
               {isActive && (
-                <span className={cn("absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-full", item.activeColor)} />
+                <span className={cn("absolute bottom-0 md:bottom-auto md:left-0 md:top-1/2 md:-translate-y-1/2 w-4 md:w-0.5 h-0.5 md:h-6 rounded-full", item.activeColor)} />
               )}
               <item.icon className={cn("w-5 h-5 transition-colors", isActive ? item.color : '')} />
               {/* Tooltip */}
-              <span className="absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl">
+              <span className="hidden md:block absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 border border-white/10 shadow-xl">
                 {displayLabel}
               </span>
             </button>
@@ -137,26 +137,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTool, setCurrentTool, u
       </nav>
 
       {/* Bottom Actions */}
-      <div className="mt-auto flex flex-col items-center gap-3 w-full px-3 relative" ref={menuRef}>
+      <div className="md:mt-auto flex flex-row md:flex-col items-center gap-1 md:gap-3 md:w-full md:px-3 relative shrink-0" ref={menuRef}>
         {/* Token Widget */}
-        {(isAdmin || APP_VERSION === 'boost') && <TokenWidget onClick={() => setCurrentTool('tokens')} />}
+        <div className="hidden md:block">
+          {(isAdmin || APP_VERSION === 'boost') && <TokenWidget onClick={() => setCurrentTool('tokens')} />}
+        </div>
 
         {/* Tokens / Loja */}
         {(isAdmin || APP_VERSION === 'boost') && (
           <button
             onClick={() => setCurrentTool('tokens')}
             className={cn(
-              "relative w-12 h-12 rounded-2xl transition-all duration-200 group flex items-center justify-center mx-auto",
+              "relative w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl transition-all duration-200 group flex items-center justify-center md:mx-auto",
               currentTool === 'tokens'
                 ? "bg-white/10"
                 : "text-white/30 hover:bg-white/5 hover:text-white/70"
             )}
           >
             {currentTool === 'tokens' && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-violet-500 rounded-full" />
+              <span className="absolute bottom-0 md:bottom-auto md:left-0 md:top-1/2 md:-translate-y-1/2 w-4 md:w-0.5 h-0.5 md:h-6 bg-violet-500 rounded-full" />
             )}
             <Coins className={cn("w-5 h-5", currentTool === 'tokens' ? 'text-violet-400' : '')} />
-            <span className="absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[60] border border-white/10">
+            <span className="hidden md:block absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[60] border border-white/10">
               Tokens & Plano
             </span>
           </button>
@@ -166,14 +168,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTool, setCurrentTool, u
           <button
             onClick={toggleSimulationMode}
             className={cn(
-              "relative w-12 h-12 rounded-2xl transition-all duration-200 group flex items-center justify-center mx-auto mt-2",
+              "hidden relative w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl transition-all duration-200 group md:flex items-center justify-center md:mx-auto md:mt-2",
               isSimulatingUser
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                 : "text-white/30 hover:bg-white/5 hover:text-white/70"
             )}
           >
             {isSimulatingUser ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            <span className="absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[60] border border-white/10">
+            <span className="hidden md:block absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[60] border border-white/10">
               {isSimulatingUser ? 'Sair do Modo Usuário' : 'Visualizar como Usuário'}
             </span>
           </button>
@@ -183,17 +185,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTool, setCurrentTool, u
           <button
             onClick={() => setCurrentTool('admin')}
             className={cn(
-              "relative w-12 h-12 rounded-2xl transition-all duration-200 group flex items-center justify-center mx-auto",
+              "hidden relative w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl transition-all duration-200 group md:flex items-center justify-center md:mx-auto",
               currentTool === 'admin'
                 ? "bg-white/10"
                 : "text-white/30 hover:bg-white/5 hover:text-white/70"
             )}
           >
             {currentTool === 'admin' && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-red-500 rounded-full" />
+              <span className="absolute bottom-0 md:bottom-auto md:left-0 md:top-1/2 md:-translate-y-1/2 w-4 md:w-0.5 h-0.5 md:h-6 bg-red-500 rounded-full" />
             )}
             <ShieldAlert className={cn("w-5 h-5", currentTool === 'admin' ? 'text-red-400' : '')} />
-            <span className="absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[60] border border-white/10">
+            <span className="hidden md:block absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[60] border border-white/10">
               Admin
             </span>
           </button>
@@ -204,10 +206,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTool, setCurrentTool, u
         {/* Bug Report Toggle */}
         <button
           onClick={() => onOpenBugReport && onOpenBugReport()}
-          className="relative w-12 h-12 rounded-2xl transition-all duration-200 group flex items-center justify-center mx-auto text-white/30 hover:bg-white/5 hover:text-orange-400"
+          className="hidden relative w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl transition-all duration-200 group md:flex items-center justify-center md:mx-auto text-white/30 hover:bg-white/5 hover:text-orange-400"
         >
           <Bug className="w-5 h-5 transition-colors" />
-          <span className="absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[60] border border-white/10 shadow-xl">
+          <span className="hidden md:block absolute left-full ml-4 px-3 py-1.5 bg-[#1a1a24] text-white text-[11px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-[60] border border-white/10 shadow-xl">
             Reportar Bug
           </span>
         </button>
@@ -217,7 +219,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTool, setCurrentTool, u
           id="sidebar-profile"
           onClick={() => setShowProfileMenu(!showProfileMenu)}
           className={cn(
-            "relative w-12 h-12 rounded-full transition-all duration-200 mx-auto p-0.5 border-2",
+            "relative w-8 h-8 md:w-12 md:h-12 rounded-full transition-all duration-200 md:mx-auto p-[1px] md:p-0.5 border-2",
             showProfileMenu || currentTool === 'profile' ? "border-violet-500" : "border-transparent hover:border-white/20"
           )}
         >
@@ -230,7 +232,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTool, setCurrentTool, u
 
         {/* Profile Dropdown Menu */}
         {showProfileMenu && (
-          <div className="absolute left-full bottom-0 ml-4 w-48 bg-[#14141e] border border-white/[0.08] rounded-2xl shadow-2xl p-2 z-[60] animate-in fade-in slide-in-from-left-2 duration-200">
+          <div className="absolute right-0 bottom-full mb-4 md:mb-0 md:left-full md:bottom-0 ml-4 w-48 bg-[#14141e] border border-white/[0.08] rounded-2xl shadow-2xl p-2 z-[60] animate-in fade-in slide-in-from-left-2 duration-200">
             <div className="px-3 py-2 border-b border-white/[0.06] mb-2">
               <p className="text-sm font-bold text-white truncate">{userProfile?.name || 'Usuário'}</p>
               <p className="text-[10px] text-white/40 truncate">@{userProfile?.handle || 'username'}</p>

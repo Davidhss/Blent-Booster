@@ -124,7 +124,7 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ userEmail, onUseItem }
         type === 'all' ? library.length : library.filter(i => i.type === type).length;
 
     return (
-        <div className="min-h-screen p-8">
+        <div className="min-h-screen p-4 md:p-8">
             <div className="max-w-6xl mx-auto space-y-8">
 
                 {/* Header */}

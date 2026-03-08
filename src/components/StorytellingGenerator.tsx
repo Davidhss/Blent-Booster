@@ -100,7 +100,7 @@ export const StorytellingGenerator: React.FC<StorytellingGeneratorProps> = ({ in
       toast.error("Preencha os campos obrigatórios.");
       return;
     }
-    if (!(await deductTokens(storyCost, 'Gerar Roteiro Storytelling'))) return;
+    if (!(await deductTokens('generateStorytelling'))) return;
     setIsGenerating(true);
     const result = await generateStorytellingScript(objective, story, audience, tone, cta, extraContext);
     if (result) {
@@ -118,7 +118,7 @@ export const StorytellingGenerator: React.FC<StorytellingGeneratorProps> = ({ in
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <header className="mb-10">
         <div className="flex items-center gap-3 mb-2">
           <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/20 rounded-xl">

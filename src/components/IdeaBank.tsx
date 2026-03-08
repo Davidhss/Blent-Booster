@@ -360,7 +360,7 @@ export const IdeaBank: React.FC = () => {
                 </div>
             </header>
 
-            <main className="flex-1 overflow-y-auto p-8 custom-scrollbar relative z-10">
+            <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative z-10">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                     {isLoading ? (
                         <div className="col-span-full flex flex-col justify-center items-center py-32 gap-4">

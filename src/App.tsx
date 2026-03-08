@@ -141,9 +141,9 @@ function MainApp() {
           setUserProfile(data);
           setPostData(prev => ({
             ...prev,
-            name: data.name || prev.name,
-            handle: data.handle || prev.handle,
-            avatarUrl: data.avatarUrl || prev.avatarUrl
+            name: prev.name === 'Seu Nome' && data.name ? data.name : prev.name,
+            handle: prev.handle === 'seu_arroba' && data.handle ? data.handle : prev.handle,
+            avatarUrl: prev.avatarUrl === 'https://picsum.photos/seed/user/200/200' && data.avatarUrl ? data.avatarUrl : prev.avatarUrl
           }));
         } else {
           // Create default profile
@@ -157,14 +157,14 @@ function MainApp() {
           const { error: insertError } = await supabase.from('profiles').insert([defaultProfile]);
           if (insertError) {
             console.error('Error creating default profile:', insertError);
-            toast.error('Erro ao criar perfil padrýo.');
+            toast.error('Erro ao criar perfil padrão.');
           }
           setUserProfile(defaultProfile);
           setPostData(prev => ({
             ...prev,
-            name: defaultProfile.name,
-            handle: defaultProfile.handle,
-            avatarUrl: defaultProfile.avatarUrl
+            name: prev.name === 'Seu Nome' ? defaultProfile.name : prev.name,
+            handle: prev.handle === 'seu_arroba' ? defaultProfile.handle : prev.handle,
+            avatarUrl: prev.avatarUrl === 'https://picsum.photos/seed/user/200/200' ? defaultProfile.avatarUrl : prev.avatarUrl
           }));
         }
       } catch (err) {
@@ -172,7 +172,7 @@ function MainApp() {
       }
     };
     fetchProfile();
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     const fetchItemsCount = async () => {
@@ -268,7 +268,7 @@ function MainApp() {
     setIsGeneratingImages(true);
     const images = await generateBackgroundImages(currentSlide.title, imagePrompt);
     if (images.length === 0) {
-      toast.error('Nýo foi possývel gerar imagens. Tente novamente.');
+      toast.error('Não foi possível gerar imagens. Tente novamente.');
     } else {
       setSuggestedImages(images);
     }
@@ -284,7 +284,7 @@ function MainApp() {
     setIsSuggestingText(true);
     const result = await suggestTextVariations(currentSlide.title, currentSlide.description || '');
     if (!result.variations || result.variations.length === 0) {
-      toast.error('Nýo foi possývel gerar variaýýes. Tente novamente.');
+      toast.error('Não foi possível gerar variações. Tente novamente.');
     } else {
       setSuggestedTexts(result.variations);
     }
@@ -293,7 +293,7 @@ function MainApp() {
 
   const handleGenerateQuote = async () => {
     if (!quoteTopic) {
-      toast.error('Digite um assunto para gerar a citaýýo.');
+      toast.error('Digite um assunto para gerar a citação.');
       return;
     }
     if (!(await deductTokens('generateQuote'))) return;
@@ -303,10 +303,10 @@ function MainApp() {
     if (result) {
       // Quote text ? title (big/prominent), author ? description (credit)
       updateSlideTitle(`"${result.text}"`);
-      updateSlideDescription(`ý ${result.author}`);
+      updateSlideDescription(`é ${result.author}`);
       toast.success('Citaýýo gerada com sucesso!');
     } else {
-      toast.error('Nýo foi possývel gerar a citaýýo.');
+      toast.error('Não foi possível gerar a citação.');
     }
     setIsGeneratingQuote(false);
   };
@@ -324,9 +324,9 @@ function MainApp() {
         // New behavior: extract text from the image and populate title + description
         if (result.mainTitle) updateSlideTitle(result.mainTitle);
         if (result.bodyText) updateSlideDescription(result.bodyText);
-        toast.success('Texto extraýdo com sucesso!');
+        toast.success('Texto extraído com sucesso!');
       } else {
-        toast.error('Nýo foi possývel extrair o texto. Tente com outro arquivo.');
+        toast.error('Não foi possível extrair o texto. Tente com outro arquivo.');
       }
       setIsAnalyzing(false);
     };
@@ -339,7 +339,7 @@ function MainApp() {
     const allText = postData.slides.map(s => `${s.title} ${s.description}`).join(' ');
     const result = await generateCaption(allText);
     if (!result) {
-      toast.error('Nýo foi possývel gerar a legenda. Tente novamente.');
+      toast.error('Não foi possível gerar a legenda. Tente novamente.');
     } else {
       setCaption(result);
       setShowCaptionModal(true);
@@ -394,7 +394,7 @@ function MainApp() {
 
   const copyCaption = () => {
     navigator.clipboard.writeText(caption);
-    toast.success('Legenda copiada para a ýrea de transferýncia!');
+    toast.success('Legenda copiada para a área de transferência!');
   };
 
   const handleBugSubmit = async () => {
@@ -439,7 +439,7 @@ function MainApp() {
         body: JSON.stringify({
           tool: bugTool,
           description: finalDesc,
-          userEmail: user?.email || 'Usuýrio Deslogado'
+          userEmail: user?.email || 'Usuário Deslogado'
         })
       });
 
@@ -452,10 +452,10 @@ function MainApp() {
       setShowBugReport(false);
       setBugDesc('');
       setBugImageFile(null);
-      toast.success('Relatýrio de bug enviado para a Assessoria Blent!');
+      toast.success('Relatório de bug enviado para a Assessoria Blent!');
     } catch (err) {
       console.error('Error submitting bug:', err);
-      toast.error('Erro ao enviar relatýrio. Tente novamente mais tarde.');
+      toast.error('Erro ao enviar relatório. Tente novamente mais tarde.');
     } finally {
       setIsSubmittingBug(false);
     }
@@ -477,7 +477,7 @@ function MainApp() {
           >
             <span className="text-base">?</span>
             <p className="text-sm font-bold text-amber-300 flex-1">
-              Seus crýditos estýo acabando! Garanta mais na nossa loja para nýo parar sua produýýo.
+              Seus créditos estão acabando! Garanta mais na nossa loja para não parar sua produção.
             </p>
             <button
               onClick={() => setCurrentTool('tokens')}
@@ -498,7 +498,7 @@ function MainApp() {
       {/* Blocked Modal */}
       {showTokens && <BlockedModal open={showBlockedModal} onClose={() => setShowBlockedModal(false)} onGoToStore={() => setCurrentTool('tokens')} />}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
         <Sidebar
           currentTool={currentTool}
           setCurrentTool={setCurrentTool}
@@ -507,7 +507,7 @@ function MainApp() {
 
         />
 
-        <div className="flex-1 overflow-y-auto h-screen">
+        <div className="flex-1 overflow-y-auto h-[100dvh] md:h-screen pb-16 md:pb-0">
           {currentTool === 'home' ? (
             <HomeDashboard setCurrentTool={setCurrentTool} totalItemsCount={totalItemsCount} />
           ) : currentTool === 'remix' ? (
@@ -693,7 +693,7 @@ function MainApp() {
                                               {layout === 'split-h' && <Layers className="w-4 h-4" />}
                                               {layout === 'split-v' && <LayoutIcon className="w-4 h-4 rotate-90" />}
                                               {layout === 'big-number' && <span className="w-4 h-4 flex items-center justify-center font-black text-xs">1</span>}
-                                              {layout === 'text-only' ? 'Sem Imagem' : layout === 'image-bg' ? 'Fundo Completo' : layout === 'split-h' ? 'Divisýo Horiz.' : layout === 'split-v' ? 'Imagem Destacada' : 'Nýmero Grande'}
+                                              {layout === 'text-only' ? 'Sem Imagem' : layout === 'image-bg' ? 'Fundo Completo' : layout === 'split-h' ? 'Divisão Horiz.' : layout === 'split-v' ? 'Imagem Destacada' : 'Número Grande'}
                                             </button>
                                           );
                                         })}
@@ -735,7 +735,7 @@ function MainApp() {
                               <section className="pt-6 border-t border-white/[0.06]">
                                 <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 flex items-center gap-2">
                                   <LayoutIcon className="w-3 h-3" />
-                                  Proporýýo / Formato
+                                  Proporção / Formato
                                 </h2>
                                 <div className="grid grid-cols-3 gap-2">
                                   {(['1:1', '4:5', '9:16'] as AspectRatio[]).map((ratio) => (
@@ -764,7 +764,7 @@ function MainApp() {
                                 <section className="pt-6 border-t border-white/[0.06]">
                                   <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 flex items-center gap-2">
                                     <TypeIcon className="w-3 h-3" />
-                                    Fonte do Týtulo
+                                    Fonte do Título
                                   </h2>
                                   <div className="grid grid-cols-2 gap-2">
                                     {[
@@ -882,7 +882,7 @@ function MainApp() {
                                         tex === 'noise' && "bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] bg-repeat",
                                         tex === 'dots' && "bg-[url('https://www.transparenttextures.com/patterns/60-lines.png')] bg-repeat"
                                       )} />
-                                      {tex === 'none' ? 'Sem' : tex === 'grain' ? 'Grýo' : tex === 'noise' ? 'Ruýdo' : 'Dots'}
+                                      {tex === 'none' ? 'Sem' : tex === 'grain' ? 'Grão' : tex === 'noise' ? 'Ruído' : 'Dots'}
                                     </button>
                                   ))}
                                 </div>
@@ -907,12 +907,12 @@ function MainApp() {
                               <section className="pt-6 border-t border-white/[0.06]">
                                 <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 flex items-center gap-2">
                                   <TypeIcon className="w-3 h-3" />
-                                  Tipografia Avanýada
+                                  Tipografia Avançada
                                 </h2>
                                 <div className="space-y-4">
                                   <div className="space-y-2">
                                     <div className="flex justify-between text-[9px] font-black uppercase tracking-widest opacity-30">
-                                      <span>Tamanho do Týtulo</span>
+                                      <span>Tamanho do Título</span>
                                       <span>{currentSlide.titleFontSize ?? 48}px</span>
                                     </div>
                                     <input type="range" min="18" max="120" step="2"
@@ -934,7 +934,7 @@ function MainApp() {
                                   </div>
                                   <div className="space-y-2">
                                     <div className="flex justify-between text-[9px] font-black uppercase tracking-widest opacity-30">
-                                      <span>Altura da Linha (Týtulo)</span>
+                                      <span>Altura da Linha (Título)</span>
                                       <span>{(currentSlide.titleLineHeight ?? 1.1).toFixed(1)}</span>
                                     </div>
                                     <input type="range" min="0.6" max="2" step="0.1"
@@ -956,7 +956,7 @@ function MainApp() {
                                   </div>
                                   <div className="space-y-2">
                                     <div className="flex justify-between text-[9px] font-black uppercase tracking-widest opacity-30">
-                                      <span>Espaýo Týtulo ? Texto</span>
+                                      <span>Espaço Título ? Texto</span>
                                       <span>{currentSlide.contentSpacing ?? 16}px</span>
                                     </div>
                                     <input type="range" min="0" max="64" step="2"
@@ -987,7 +987,7 @@ function MainApp() {
                                     <p className="text-[10px] font-black uppercase tracking-widest text-white">
                                       {isAnalyzing ? 'Extraindo Texto...' : 'Subir Imagem do Post'}
                                     </p>
-                                    <p className="text-[8px] font-bold text-white/30">A IA extrai o texto e preenche o týtulo e conteýdo</p>
+                                    <p className="text-[8px] font-bold text-white/30">A IA extrai o texto e preenche o týtulo e conteúdo</p>
                                   </div>
                                 </div>
                                 <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
@@ -1037,7 +1037,7 @@ function MainApp() {
                                 <div className="space-y-4">
                                   <div className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                      <label className="text-[9px] font-black uppercase tracking-widest text-white/25">Týtulo</label>
+                                      <label className="text-[9px] font-black uppercase tracking-widest text-white/25">Título</label>
                                       <button
                                         onClick={handleSuggestTextVariations}
                                         disabled={isSuggestingText || !currentSlide.title}
@@ -1052,31 +1052,41 @@ function MainApp() {
                                       value={currentSlide.title || ''}
                                       onChange={(e) => updateSlideTitle(e.target.value)}
                                       className="w-full p-4 bg-white/[0.04] rounded-2xl border border-white/[0.07] focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all text-base font-black tracking-tight text-white placeholder:text-white/20 outline-none"
-                                      placeholder="Týtulo principal do slide..."
+                                      placeholder="Título principal do slide..."
                                     />
                                   </div>
                                   <div className="space-y-1.5">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <label className="text-[9px] font-black uppercase tracking-widest text-white/25">Descriýýo / Corpo do Texto</label>
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <label className="text-[9px] font-black uppercase tracking-widest text-white/25">Descrição / Corpo do Texto</label>
                                     </div>
 
-                                    {/* Gerador de Citaýýo */}
-                                    <div className="flex items-center gap-2 mb-2 p-2 bg-white/[0.03] rounded-xl border border-white/[0.06] focus-within:border-violet-500/30 transition-all">
-                                      <input
-                                        type="text"
-                                        value={quoteTopic}
-                                        onChange={(e) => setQuoteTopic(e.target.value)}
-                                        placeholder="Gerar citaýýo de famoso sobre... (Ex: Marketing)"
-                                        className="flex-1 min-w-0 bg-transparent text-xs text-white placeholder:text-white/20 outline-none px-2"
-                                      />
-                                      <button
-                                        onClick={handleGenerateQuote}
-                                        disabled={isGeneratingQuote || !quoteTopic}
-                                        className="px-3 py-1.5 bg-violet-600 text-white hover:bg-violet-500 transition-all rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1 disabled:opacity-50 shrink-0"
-                                      >
-                                        {isGeneratingQuote ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                        Puxar Frase
-                                      </button>
+                                    {/* Gerador de Citação */}
+                                    <div className="flex flex-col gap-1.5 mb-3 p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] items-center gap-1 font-black uppercase tracking-widest text-violet-400 flex">
+                                          <Sparkles className="w-3 h-3" /> Gerador de Frases com IA
+                                        </span>
+                                        <span className="text-[9px] font-medium text-white/30">
+                                          Digite um tema (ex: motivação, vendas) e a IA buscará uma frase impactante.
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <input
+                                          type="text"
+                                          value={quoteTopic}
+                                          onChange={(e) => setQuoteTopic(e.target.value)}
+                                          placeholder="Tema da frase..."
+                                          className="flex-1 min-w-0 bg-white/[0.05] border border-white/[0.1] rounded-lg text-xs text-white placeholder:text-white/20 outline-none px-3 py-2 focus:border-violet-500/50 transition-all"
+                                        />
+                                        <button
+                                          onClick={handleGenerateQuote}
+                                          disabled={isGeneratingQuote || !quoteTopic}
+                                          className="px-4 py-2 bg-violet-600 text-white hover:bg-violet-500 transition-all rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 disabled:opacity-50 shrink-0"
+                                        >
+                                          {isGeneratingQuote ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                          Gerar Frase
+                                        </button>
+                                      </div>
                                     </div>
 
                                     <textarea
@@ -1084,13 +1094,13 @@ function MainApp() {
                                       onChange={(e) => updateSlideDescription(e.target.value)}
                                       rows={4}
                                       className="w-full p-4 bg-white/[0.04] rounded-2xl border border-white/[0.07] focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all text-sm font-medium resize-none text-white/85 placeholder:text-white/20 outline-none"
-                                      placeholder="Texto de apoio ou citaýýo gerada..."
+                                      placeholder="Texto de apoio ou citação gerada..."
                                     />
                                   </div>
 
                                   {currentSlide.suggestedTexts && currentSlide.suggestedTexts.length > 0 && (
                                     <div className="space-y-3 pt-4 border-t border-white/[0.06]">
-                                      <h3 className="text-[10px] font-black uppercase tracking-widest text-white/30">Sugestýes da IA</h3>
+                                      <h3 className="text-[10px] font-black uppercase tracking-widest text-white/30">Sugestões da IA</h3>
                                       <div className="space-y-2">
                                         {currentSlide.suggestedTexts.map((v, i) => (
                                           <button
@@ -1139,7 +1149,7 @@ function MainApp() {
                                         {currentSlide.imageUrl ? 'Trocar Imagem' : 'Fazer Upload'}
                                       </button>
                                       {(currentSlide.layout === 'image-bg' || postData.templateType === 'atmospheric') && (
-                                        <div className="relative flex-1" title="Em breve disponývel">
+                                        <div className="relative flex-1" title="Em breve disponível">
                                           <button
                                             disabled
                                             className="w-full py-3 bg-violet-600/30 text-white/30 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed select-none border border-violet-500/10"
@@ -1148,7 +1158,7 @@ function MainApp() {
                                             Criar Fundo IA
                                           </button>
                                           <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                                            <span className="absolute -top-9 left-1/2 -translate-x-1/2 bg-[#1a1a24] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg border border-white/10 shadow-xl whitespace-nowrap">?? Em breve disponývel</span>
+                                            <span className="absolute -top-9 left-1/2 -translate-x-1/2 bg-[#1a1a24] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg border border-white/10 shadow-xl whitespace-nowrap">?? Em breve disponível</span>
                                           </div>
                                         </div>
                                       )}
@@ -1162,7 +1172,7 @@ function MainApp() {
                                             onClick={() => applySuggestedImage(img)}
                                             className="aspect-square rounded-xl overflow-hidden border-2 border-transparent hover:border-violet-500 transition-all relative group"
                                           >
-                                            <img src={img} className="w-full h-full object-cover" alt={`Sugestýo ${i + 1}`} />
+                                            <img src={img} className="w-full h-full object-cover" alt={`Sugestão ${i + 1}`} />
                                             <div className="absolute inset-0 bg-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                               <CheckCircle2 className="w-5 h-5 text-white" />
                                             </div>
@@ -1201,7 +1211,7 @@ function MainApp() {
                                         <div className="grid grid-cols-2 gap-4">
                                           <div className="space-y-2">
                                             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
-                                              <span>Posiýýo X</span>
+                                              <span>Posição X</span>
                                               <span>{currentSlide.imageConfig?.x || 0}px</span>
                                             </div>
                                             <input
@@ -1213,7 +1223,7 @@ function MainApp() {
                                           </div>
                                           <div className="space-y-2">
                                             <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
-                                              <span>Posiýýo Y</span>
+                                              <span>Posição Y</span>
                                               <span>{currentSlide.imageConfig?.y || 0}px</span>
                                             </div>
                                             <input
@@ -1240,7 +1250,7 @@ function MainApp() {
                                             </div>
                                             <div className="space-y-2">
                                               <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
-                                                <span>Exposiýýo Brilho</span>
+                                                <span>Exposição Brilho</span>
                                                 <span>{Math.round((currentSlide.bgBrightness ?? 1) * 100)}%</span>
                                               </div>
                                               <input
@@ -1319,7 +1329,7 @@ function MainApp() {
                   </div>
                   <div>
                     <h1 className="text-2xl font-black tracking-tight text-white">Audience Insights</h1>
-                    <p className="text-white/40 text-sm font-medium">Descubra o que seu pýblico realmente quer saber.</p>
+                    <p className="text-white/40 text-sm font-medium">Descubra o que seu público realmente quer saber.</p>
                   </div>
                 </div>
               </header>
@@ -1329,7 +1339,7 @@ function MainApp() {
                 <div className="space-y-5">
                   <section className="bg-[#14141e] p-6 rounded-2xl border border-white/[0.06] space-y-5">
                     <div className="flex items-center justify-between">
-                      <h2 className="text-xs font-bold uppercase tracking-widest text-white/40">Dados do Pýblico</h2>
+                      <h2 className="text-xs font-bold uppercase tracking-widest text-white/40">Dados do Público</h2>
                       <div className="flex bg-white/[0.05] p-1 rounded-xl gap-1">
                         <button
                           onClick={() => setInsightMode('basic')}
@@ -1338,7 +1348,7 @@ function MainApp() {
                             insightMode === 'basic' ? "bg-violet-600 text-white shadow-sm" : "text-white/40 hover:text-white/70"
                           )}
                         >
-                          BýSICO
+                          BÁSICO
                         </button>
                         <button
                           onClick={() => setInsightMode('detailed')}
@@ -1354,11 +1364,11 @@ function MainApp() {
 
                     {insightMode === 'basic' ? (
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-1 block">Quem ý seu pýblico?</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-1 block">Quem é seu público?</label>
                         <textarea
                           value={audienceBasic}
                           onChange={(e) => setAudienceBasic(e.target.value)}
-                          placeholder="Ex: Empreendedores iniciantes que querem vender no Instagram mas tým vergonha..."
+                          placeholder="Ex: Empreendedores iniciantes que querem vender no Instagram mas têm vergonha..."
                           className="w-full p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white/90 placeholder:text-white/20 focus:outline-none focus:border-violet-500/50 transition-all text-sm h-28 resize-none"
                         />
                       </div>
@@ -1390,7 +1400,7 @@ function MainApp() {
                             type="text"
                             value={audienceDetailed.desires}
                             onChange={(e) => setAudienceDetailed({ ...audienceDetailed, desires: e.target.value })}
-                            placeholder="Ex: Liberdade geogrýfica"
+                            placeholder="Ex: Liberdade geográfica"
                             className="w-full p-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white/90 placeholder:text-white/20 focus:outline-none focus:border-violet-500/50 transition-all text-sm"
                           />
                         </div>
@@ -1431,7 +1441,7 @@ function MainApp() {
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-3 block">Nível de Consciência</label>
                       <div className="grid grid-cols-2 gap-2">
-                        {['Inconsciente', 'Consciente do Problema', 'Consciente da Soluýýo', 'Consciente do Produto', 'Totalmente Consciente'].map((level) => (
+                        {['Inconsciente', 'Consciente do Problema', 'Consciente da Solução', 'Consciente do Produto', 'Totalmente Consciente'].map((level) => (
                           <button
                             key={level}
                             onClick={() => setAwarenessLevel(level)}
@@ -1450,7 +1460,7 @@ function MainApp() {
 
                     <div>
                       <div className="flex justify-between items-center mb-3">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-white/30 block">Nývel de Informalidade</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-white/30 block">Nível de Informalidade</label>
                         <span className="text-[10px] font-black text-violet-400">{informalityLevel}%</span>
                       </div>
                       <div className="flex items-center gap-4">
@@ -1474,12 +1484,12 @@ function MainApp() {
                     {isGeneratingQuestions ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Mapeando Psicologia do Pýblico...
+                        Mapeando Psicologia do Público...
                       </>
                     ) : (
                       <>
                         <Zap className="w-5 h-5 fill-current" />
-                        Gerar Dashboard Estratýgico ({costLabel('generateInsights')})
+                        Gerar Dashboard Estratégico ({costLabel('generateInsights')})
                       </>
                     )}
                   </button>
@@ -1495,7 +1505,7 @@ function MainApp() {
                     <div className="relative z-10 flex-1">
                       <div className="flex items-center justify-between mb-6">
                         <div>
-                          <h2 className="text-xs font-black uppercase tracking-[0.3em] text-white/30 mb-0.5">Dashboard Estratýgico</h2>
+                          <h2 className="text-xs font-black uppercase tracking-[0.3em] text-white/30 mb-0.5">Dashboard Estratégico</h2>
                           <p className="text-[10px] font-bold text-white/15 uppercase tracking-widest">Insights por Psicologia do Consumidor</p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1579,7 +1589,7 @@ function MainApp() {
               <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-center gap-3 shadow-lg">
                 <span className="text-base">?</span>
                 <p className="text-sm font-bold text-amber-300 flex-1">
-                  Seus crýditos estýo acabando! Garanta mais na nossa loja para nýo parar sua produýýo.
+                  Seus créditos estão acabando! Garanta mais na nossa loja para não parar sua produção.
                 </p>
                 <button
                   onClick={() => setCurrentTool('tokens')}
@@ -1698,7 +1708,7 @@ function MainApp() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2 block">Descriýýo do Problema</label>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2 block">Descrição do Problema</label>
                     <textarea
                       value={bugDesc}
                       onChange={(e) => setBugDesc(e.target.value)}
@@ -1725,7 +1735,7 @@ function MainApp() {
                     className="flex-1 py-3 bg-orange-500 text-black rounded-xl font-bold hover:bg-orange-400 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isSubmittingBug ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    {isSubmittingBug ? 'Enviando...' : 'Enviar Relatýrio'}
+                    {isSubmittingBug ? 'Enviando...' : 'Enviar Relatório'}
                   </button>
                   <button
                     onClick={() => setShowBugReport(false)}

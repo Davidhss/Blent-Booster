@@ -114,7 +114,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
                 : '#34d399';
 
     return (
-        <div className="max-w-7xl mx-auto p-8 space-y-12 min-h-screen relative overflow-hidden">
+        <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-8 md:space-y-12 min-h-screen relative overflow-hidden">
             <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-violet-600/5 blur-[120px] rounded-full -z-10 animate-pulse" />
             <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-indigo-600/5 blur-[100px] rounded-full -z-10 animate-pulse" style={{ animationDelay: '2s' }} />
 
@@ -122,7 +122,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
             <motion.section
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="relative py-12 px-8 rounded-[40px] bg-gradient-to-br from-[#1a1a2e] to-[#0d0d12] border border-white/5 overflow-hidden group shadow-2xl"
+                className="relative py-8 md:py-12 px-4 md:px-8 rounded-[32px] md:rounded-[40px] bg-gradient-to-br from-[#1a1a2e] to-[#0d0d12] border border-white/5 overflow-hidden group shadow-2xl"
             >
                 {/* Floating Decorative Icons */}
                 <motion.div
@@ -148,8 +148,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
                 </motion.div>
 
                 {/* Main Content */}
-                <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
-                    <div className="flex-1 text-center md:text-left space-y-6">
+                <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 md:gap-12">
+                    <div className="flex-1 text-center md:text-left space-y-4 md:space-y-6">
                         <motion.div
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -176,14 +176,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-4">
                             <button
                                 onClick={() => setCurrentTool('remix')}
-                                className="px-8 py-4 bg-white text-black rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/10 flex items-center gap-2 group/btn"
+                                className="px-6 py-3 md:px-8 md:py-4 bg-white text-black rounded-2xl font-black text-xs md:text-sm uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/10 flex items-center gap-2 group/btn"
                             >
                                 Começar a Criar
                                 <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                             </button>
                             <button
                                 onClick={() => setCurrentTool('ideas')}
-                                className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-2xl font-black text-sm uppercase tracking-widest transition-all"
+                                className="px-6 py-3 md:px-8 md:py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-2xl font-black text-xs md:text-sm uppercase tracking-widest transition-all"
                             >
                                 Buscar Inspiração
                             </button>
@@ -195,18 +195,18 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.4 }}
-                        className="w-full md:w-auto grid grid-cols-2 gap-4 shrink-0"
+                        className="w-full md:w-auto grid grid-cols-2 gap-2 md:gap-4 shrink-0"
                     >
-                        <div className="p-6 rounded-[32px] bg-white/5 border border-white/10 backdrop-blur-xl flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-all">
-                            <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center mb-3">
-                                <Zap className="w-5 h-5 text-violet-400" />
+                        <div className="p-4 md:p-6 rounded-3xl md:rounded-[32px] bg-white/5 border border-white/10 backdrop-blur-xl flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-all">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-violet-500/20 flex items-center justify-center mb-2 md:mb-3">
+                                <Zap className="w-4 h-4 md:w-5 md:h-5 text-violet-400" />
                             </div>
-                            <span className="text-2xl font-black text-white">{stats.total}</span>
-                            <span className="text-[9px] font-black uppercase tracking-widest text-white/30">Criados Hoje</span>
+                            <span className="text-xl md:text-2xl font-black text-white">{stats.total}</span>
+                            <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-white/30">Criados Hoje</span>
                         </div>
-                        <div className="p-6 rounded-[32px] bg-white/5 border border-white/10 backdrop-blur-xl flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-all">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center mb-3">
-                                <Library className="w-5 h-5 text-indigo-400" />
+                        <div className="p-4 md:p-6 rounded-3xl md:rounded-[32px] bg-white/5 border border-white/10 backdrop-blur-xl flex flex-col items-center justify-center text-center group hover:bg-white/10 transition-all">
+                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center mb-2 md:mb-3">
+                                <Library className="w-4 h-4 md:w-5 md:h-5 text-indigo-400" />
                             </div>
                             <span className="text-2xl font-black text-white">{totalItemsCount}</span>
                             <span className="text-[9px] font-black uppercase tracking-widest text-white/30">Total Acervo</span>
@@ -223,7 +223,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.08 }}
                     className={cn(
-                        "relative rounded-3xl p-6 border overflow-hidden",
+                        "relative rounded-3xl p-4 md:p-6 border overflow-hidden",
                         isBlocked
                             ? "bg-red-950/30 border-red-500/20"
                             : isLowBalance
@@ -344,14 +344,14 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
                 className={cn(
-                    "relative bg-white dark:bg-[#14141e] rounded-[40px] p-10 border border-slate-200 dark:border-white/[0.06] overflow-hidden group transition-all"
+                    "relative bg-white dark:bg-[#14141e] rounded-[32px] md:rounded-[40px] p-6 md:p-10 border border-slate-200 dark:border-white/[0.06] overflow-hidden group transition-all"
                 )}
             >
                 <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 blur-[100px] rounded-full group-hover:bg-violet-500/20 transition-colors duration-700" />
 
-                <div className="relative z-10 flex flex-col md:flex-row gap-8 items-start md:items-center">
-                    <div className="w-16 h-16 bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.05] rounded-2xl flex items-center justify-center shrink-0">
-                        <Quote className="w-8 h-8 text-violet-400 opacity-50" />
+                <div className="relative z-10 flex flex-col md:flex-row gap-6 md:gap-8 items-start md:items-center">
+                    <div className="w-12 h-12 md:w-16 md:h-16 bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.05] rounded-2xl flex items-center justify-center shrink-0">
+                        <Quote className="w-6 h-6 md:w-8 md:h-8 text-violet-400 opacity-50" />
                     </div>
                     <div className="space-y-3 flex-1">
                         <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white leading-tight">"{dailyInspiration.quote}"</h2>
@@ -382,7 +382,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Motivational / Creative Mindset Section */}
                         {/* Focus / Goal Card */}
-                        <div className="bg-white dark:bg-[#14141e] rounded-[40px] p-8 border border-slate-200 dark:border-white/[0.06] flex flex-col justify-between relative overflow-hidden shadow-xl">
+                        <div className="bg-white dark:bg-[#14141e] rounded-[32px] md:rounded-[40px] p-6 md:p-8 border border-slate-200 dark:border-white/[0.06] flex flex-col justify-between relative overflow-hidden shadow-xl">
                             <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-500/5 blur-[60px] rounded-full" />
 
                             <div className="relative z-10">
@@ -419,21 +419,21 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({ setCurrentTool, to
                             {[
                                 { label: isBlentVersion ? 'Blent' : 'Remix Boost', icon: Sparkles, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'hover:border-violet-500/30', tool: 'remix' as ToolType },
                                 ...(isBlentVersion ? [
-                                    { label: 'Banco de Ideias', icon: Lightbulb, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'hover:border-yellow-500/30', tool: 'ideas' as ToolType },
+                                    { label: 'Gerador Ideias', icon: Lightbulb, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'hover:border-yellow-500/30', tool: 'ideas' as ToolType },
                                     { label: 'Planner Beta', icon: CalendarDays, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'hover:border-indigo-500/30', tool: 'planner' as ToolType },
                                     { label: 'Meu Acervo', icon: Library, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'hover:border-pink-500/30', tool: 'library' as ToolType },
                                 ] : [
-                                    { label: 'Gerador Ideias', icon: Rocket, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'hover:border-violet-500/30', tool: 'strategy' as ToolType },
-                                    { label: 'Novo Insight', icon: Target, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'hover:border-blue-500/30', tool: 'insights' as ToolType },
-                                    { label: 'Novo Ad', icon: Video, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'hover:border-orange-500/30', tool: 'ads' as ToolType },
-                                    { label: 'Storytelling', icon: BookOpen, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'hover:border-emerald-500/30', tool: 'storytelling' as ToolType },
+                                    { label: 'Gerador', icon: Rocket, color: 'text-violet-400', bg: 'bg-violet-500/10', border: 'hover:border-violet-500/30', tool: 'strategy' as ToolType },
+                                    { label: 'Insight', icon: Target, color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'hover:border-blue-500/30', tool: 'insights' as ToolType },
+                                    { label: 'Ad Script', icon: Video, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'hover:border-orange-500/30', tool: 'ads' as ToolType },
+                                    { label: 'Story', icon: BookOpen, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'hover:border-emerald-500/30', tool: 'storytelling' as ToolType },
                                 ])
                             ].map((stat, idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => setCurrentTool(stat.tool)}
                                     className={cn(
-                                        "bg-white dark:bg-[#14141e] rounded-[32px] p-6 border border-slate-200 dark:border-white/[0.06] transition-all duration-300 relative overflow-hidden group text-left flex flex-col justify-between h-full shadow-lg hover:shadow-xl hover:scale-[1.02] hover:bg-white/[0.02]",
+                                        "bg-white dark:bg-[#14141e] rounded-3xl md:rounded-[32px] p-4 md:p-6 border border-slate-200 dark:border-white/[0.06] transition-all duration-300 relative overflow-hidden group text-left flex flex-col justify-between h-full shadow-lg hover:shadow-xl hover:scale-[1.02] hover:bg-white/[0.02]",
                                         stat.border
                                     )}
                                     style={{ animationDelay: `${idx * 0.4}s` }}
