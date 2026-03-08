@@ -26,8 +26,33 @@ CREATE TABLE IF NOT EXISTS profiles (
   avatarUrl TEXT,
   bio TEXT,
   role TEXT DEFAULT 'user', -- 'admin' or 'user'
+  subscription_status TEXT,
+  subscription_plan TEXT,
+  stripe_customer_id TEXT,
+  last_payment_date TIMESTAMP WITH TIME ZONE,
+  token_balance INTEGER DEFAULT 0,
+  is_unlimited BOOLEAN DEFAULT false,
+  features JSONB DEFAULT '[]'::jsonb,
+  saved_audience TEXT,
+  saved_product TEXT,
+  level INTEGER DEFAULT 1,
+  xp INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- Note: To update an existing database you must run the following ALTER TABLE commands
+-- as CREATE TABLE IF NOT EXISTS will skip if the table exists.
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_status TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS subscription_plan TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS last_payment_date TIMESTAMP WITH TIME ZONE;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS token_balance INTEGER DEFAULT 0;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_unlimited BOOLEAN DEFAULT false;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS features JSONB DEFAULT '[]'::jsonb;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS saved_audience TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS saved_product TEXT;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1;
+-- ALTER TABLE profiles ADD COLUMN IF NOT EXISTS xp INTEGER DEFAULT 0;
 
 -- 4. Create library table
 CREATE TABLE IF NOT EXISTS library (

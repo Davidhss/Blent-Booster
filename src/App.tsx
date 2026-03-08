@@ -430,7 +430,8 @@ function MainApp() {
         }
       }
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/bug-report`, {
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_URL}/api/report-bug`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

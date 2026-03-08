@@ -10,7 +10,11 @@ import {
     ExternalLink,
     Search,
     Loader2,
-    Filter
+    Filter,
+    Pencil,
+    X,
+    Check,
+    StickyNote
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { LibraryItem } from '../types';
@@ -42,6 +46,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ userEmail, onUseItem }
     const [activeFilter, setActiveFilter] = useState<FilterType>('all');
     const [search, setSearch] = useState('');
     const [lastDeletedItem, setLastDeletedItem] = useState<LibraryItem | null>(null);
+    const [editingItemId, setEditingItemId] = useState<number | null>(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editNotes, setEditNotes] = useState('');
+    const [isSavingEdit, setIsSavingEdit] = useState(false);
 
     useEffect(() => {
         const fetchLibrary = async () => {
@@ -108,16 +116,44 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ userEmail, onUseItem }
 
     const filtered = library.filter(item => {
         const matchType = activeFilter === 'all' || item.type === activeFilter;
-        const matchSearch = !search || JSON.stringify(item.content).toLowerCase().includes(search.toLowerCase());
+        const c = item.content as any;
+        const matchSearch = !search || JSON.stringify(item.content).toLowerCase().includes(search.toLowerCase())
+            || (c.user_title || '').toLowerCase().includes(search.toLowerCase())
+            || (c.user_notes || '').toLowerCase().includes(search.toLowerCase());
         return matchType && matchSearch;
     });
 
     const getItemTitle = (item: LibraryItem) => {
-        if (item.type === 'static') return (item.content as any).slides?.[0]?.title || 'Carrossel sem título';
-        if (item.type === 'ad-script') return (item.content as any).hook?.slice(0, 60) || 'Anúncio sem título';
-        if (item.type === 'storytelling-script') return (item.content as any).title || 'Roteiro sem título';
-        if (item.type === 'insight') return `${(item.content as any[])?.length || 0} Insights gerados`;
+        const c = item.content as any;
+        if (c.user_title) return c.user_title;
+        if (item.type === 'static') return c.slides?.[0]?.title || 'Carrossel sem título';
+        if (item.type === 'ad-script') return c.hook?.slice(0, 60) || 'Anúncio sem título';
+        if (item.type === 'storytelling-script') return c.title || 'Roteiro sem título';
+        if (item.type === 'insight') return `${(c as any[])?.length || 0} Insights gerados`;
         return 'Item sem título';
+    };
+
+    const handleOpenEdit = (item: LibraryItem) => {
+        const c = item.content as any;
+        setEditTitle(c.user_title || '');
+        setEditNotes(c.user_notes || '');
+        setEditingItemId(item.id);
+    };
+
+    const handleSaveEdit = async (item: LibraryItem) => {
+        setIsSavingEdit(true);
+        try {
+            const newContent = { ...item.content as any, user_title: editTitle.trim() || undefined, user_notes: editNotes.trim() || undefined };
+            const { error } = await supabase.from('library').update({ content: newContent }).eq('id', item.id);
+            if (error) throw error;
+            setLibrary(prev => prev.map(i => i.id === item.id ? { ...i, content: newContent } : i));
+            setEditingItemId(null);
+            toast.success('Anotação salva!');
+        } catch (err) {
+            toast.error('Erro ao salvar anotação.');
+        } finally {
+            setIsSavingEdit(false);
+        }
     };
 
     const countByType = (type: FilterType) =>
@@ -312,9 +348,14 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ userEmail, onUseItem }
                                                 {/* Card footer */}
                                                 <div className="p-5 flex-1 flex flex-col justify-between gap-4">
                                                     <div>
-                                                        <h3 className="text-sm font-black text-slate-900 dark:text-white line-clamp-2 leading-snug mb-2 group-hover:text-violet-400 transition-colors">
+                                                        <h3 className="text-sm font-black text-slate-900 dark:text-white line-clamp-2 leading-snug mb-1 group-hover:text-violet-400 transition-colors">
                                                             {getItemTitle(item)}
                                                         </h3>
+                                                        {(item.content as any).user_notes && (
+                                                            <p className="text-[11px] font-medium text-slate-500 dark:text-white/40 line-clamp-2 mb-2">
+                                                                {(item.content as any).user_notes}
+                                                            </p>
+                                                        )}
                                                         <div className="flex items-center gap-2">
                                                             <span className={cn(
                                                                 "inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.04]",
@@ -323,15 +364,26 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ userEmail, onUseItem }
                                                                 {typeInfo.icon}
                                                                 {typeInfo.label}
                                                             </span>
+                                                            {(item.content as any).user_notes && (
+                                                                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-500">
+                                                                    <StickyNote className="w-3 h-3" />
+                                                                    Nota
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/[0.04]">
-                                                        <p className="text-[10px] font-bold text-slate-400 dark:text-white/25">
-                                                            Adicionado em
-                                                        </p>
                                                         <p className="text-[10px] font-black text-slate-900 dark:text-white/60">
                                                             {new Date(item.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                                                         </p>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(item); }}
+                                                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] hover:bg-violet-500/10 hover:text-violet-500 text-slate-400 dark:text-white/25 text-[9px] font-black uppercase tracking-widest transition-all"
+                                                            title="Editar título e anotação"
+                                                        >
+                                                            <Pencil className="w-3 h-3" />
+                                                            Anotar
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -343,6 +395,72 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ userEmail, onUseItem }
                     </AnimatePresence>
                 )}
             </div>
+
+            {/* Edit title + notes modal */}
+            {editingItemId !== null && (() => {
+                const editItem = library.find(i => i.id === editingItemId);
+                if (!editItem) return null;
+                return (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+                        <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setEditingItemId(null)} />
+                        <div className="relative w-full max-w-md bg-white dark:bg-[#14141e] rounded-[32px] border border-slate-200 dark:border-white/[0.08] shadow-2xl overflow-hidden z-10">
+                            <div className="p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Título e Anotação</h3>
+                                        <p className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase tracking-widest">Adicione um título personalizado e notas ao item</p>
+                                    </div>
+                                    <button onClick={() => setEditingItemId(null)} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 dark:text-white/30 transition-all">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-500">Título Personalizado</label>
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={editTitle}
+                                            onChange={e => setEditTitle(e.target.value)}
+                                            placeholder="Ex: Post para segunda-feira..."
+                                            className="w-full bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-2xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-white/20 outline-none focus:border-violet-500/50 transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Anotação / Legenda</label>
+                                        <textarea
+                                            value={editNotes}
+                                            onChange={e => setEditNotes(e.target.value)}
+                                            placeholder="Ex: Legenda do post, referências, observações..."
+                                            rows={5}
+                                            className="w-full bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-2xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-white/20 outline-none focus:border-emerald-500/50 transition-all resize-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 mt-6">
+                                    <button
+                                        onClick={() => setEditingItemId(null)}
+                                        className="flex-1 px-4 py-3 bg-slate-100 dark:bg-white/[0.04] hover:bg-slate-200 dark:hover:bg-white/[0.08] text-slate-600 dark:text-white/60 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => handleSaveEdit(editItem)}
+                                        disabled={isSavingEdit}
+                                        className="flex-1 px-4 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shadow-lg shadow-violet-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {isSavingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                                        Salvar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };
+

@@ -113,7 +113,7 @@ const sendEmailViaSendGrid = async (toEmail: string, subject: string, htmlConten
   const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
   if (!SENDGRID_API_KEY) {
     console.error("SENDGRID_API_KEY is not defined. No email sent.");
-    return;
+    throw new Error("SENDGRID_API_KEY not defined");
   }
 
   try {
@@ -133,11 +133,13 @@ const sendEmailViaSendGrid = async (toEmail: string, subject: string, htmlConten
     if (!sendgridRes.ok) {
       const sendgridErr = await sendgridRes.text();
       console.error("Erro ao enviar e-mail via SendGrid:", sendgridErr);
+      throw new Error(`SendGrid API Error: ${sendgridErr}`);
     } else {
       console.log(`Email '${subject}' enviado para ${toEmail} com sucesso!`);
     }
-  } catch (e) {
+  } catch (e: any) {
     console.error("Erro fatal ao enviar email:", e);
+    throw e;
   }
 };
 
@@ -590,6 +592,198 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   } catch (err: any) {
     console.error("Erro na rota de forgot-password:", err.message);
     res.status(500).json({ error: "Ocorreu um erro interno ao solicitar a recuperação." });
+  }
+});
+
+// =============================================
+// BUG REPORT & ADMIN BUG MANAGEMENT
+// =============================================
+app.post("/api/report-bug", async (req, res) => {
+  const { tool, description, userEmail } = req.body;
+
+  if (!description) {
+    return res.status(400).json({ error: "A descrição do bug é obrigatória." });
+  }
+
+  try {
+    let userId = null;
+    if (userEmail) {
+      // Find the user ID based on email if possible
+      const { data: profiles } = await supabaseAdmin.from('profiles').select('id, email').eq('email', userEmail);
+      if (profiles && profiles.length > 0) {
+        userId = profiles[0].id;
+      }
+    }
+
+    // Insert into DB
+    const { error: insertError } = await supabaseAdmin.from('bug_reports').insert({
+      user_id: userId,
+      user_email: userEmail || 'unknown@example.com',
+      tool: tool || 'Geral',
+      description
+    });
+
+    if (insertError) {
+      console.error("Erro ao salvar bug no banco:", insertError);
+    }
+
+    const htmlEmail = `
+      <h2>Novo Relatório de Bug - BlentBoost</h2>
+      <p><strong>Usuário (Email):</strong> ${userEmail || 'Não informado'}</p>
+      <p><strong>Ferramenta/Seção:</strong> ${tool || 'Geral'}</p>
+      <h3>Descrição:</h3>
+      <pre style="white-space: pre-wrap; font-family: sans-serif;">${description}</pre>
+    `;
+
+    try {
+      await sendEmailViaSendGrid(
+        "contato@assessoriablent.com",
+        `Report de Bug: ${tool || 'Geral'} - ${userEmail || 'Usuário'}`,
+        htmlEmail
+      );
+    } catch (e) {
+      console.error("Falha ao enviar e-mail de notificação de bug interno:", e);
+    }
+
+    res.json({ success: true, message: "Relatório enviado com sucesso." });
+  } catch (err: any) {
+    console.error("Erro na rota de report-bug:", err);
+    res.status(500).json({ error: "Ocorreu um erro interno ao enviar o relatório." });
+  }
+});
+
+// GET all bugs
+app.get("/api/admin/bug-reports", async (req: any, res) => {
+  try {
+    // Fetch all bugs
+    const { data: bugs, error } = await supabaseAdmin
+      .from('bug_reports')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Fetch profile info for bugs that have user_id
+    const userIds = (bugs || []).map((b: any) => b.user_id).filter(Boolean);
+    let profileMap: any = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabaseAdmin.from('profiles').select('id, name, "avatarUrl"').in('id', userIds);
+      profileMap = (profiles || []).reduce((acc: any, p: any) => { acc[p.id] = p; return acc; }, {});
+    }
+
+    // Calculate total bugs per user
+    const userBugCounts = (bugs || []).reduce((acc: any, curr: any) => {
+      acc[curr.user_email] = (acc[curr.user_email] || 0) + 1;
+      return acc;
+    }, {});
+
+    const enrichedBugs = (bugs || []).map((b: any) => ({
+      ...b,
+      profiles: profileMap[b.user_id] || null,
+      total_reports_by_user: userBugCounts[b.user_email] || 1
+    }));
+
+    res.json({ bugs: enrichedBugs });
+  } catch (err: any) {
+    console.error("Error fetching bugs:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Resolve bug
+app.post("/api/admin/bug-reports/:id/resolve", async (req: any, res) => {
+  try {
+    const bugId = req.params.id;
+    const { error } = await supabaseAdmin.from('bug_reports').update({ status: 'resolved' }).eq('id', bugId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("Error resolving bug:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Send thank you email
+app.post("/api/admin/bug-reports/:id/thank-you", async (req: any, res) => {
+  try {
+    const bugId = req.params.id;
+
+    // Fetch bug details
+    const { data: bug, error } = await supabaseAdmin.from('bug_reports').select('*').eq('id', bugId).single();
+    if (error || !bug) throw error || new Error("Bug not found");
+
+    if (!bug.user_email || bug.user_email === 'unknown@example.com') {
+      return res.status(400).json({ error: "Nenhum e-mail válido associado a este bug." });
+    }
+
+    const appUrl = process.env.VITE_APP_URL || 'https://app.assessoriablent.com';
+
+    // Beautiful HTML Email using the reference style
+    const htmlEmail = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Agradecimento - BlentBoost</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #06060f; color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color: #06060f;">
+              <tr>
+                  <td align="center" style="padding: 40px 0;">
+                      <table width="100%" max-width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #14141e; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; overflow: hidden;">
+                          <!-- HEADER -->
+                          <tr>
+                              <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                                  <div style="display: inline-block; background: linear-gradient(135deg, #8b5cf6, #7e22ce); padding: 14px 16px; border-radius: 16px; margin-bottom: 24px;">
+                                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="white"/>
+                                      </svg>
+                                  </div>
+                                  <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 900; letter-spacing: -0.5px;">Obrigado por Ajudar! 💜</h1>
+                              </td>
+                          </tr>
+                          
+                          <!-- BODY -->
+                          <tr>
+                              <td style="padding: 20px 40px 40px 40px;">
+                                  <p style="margin: 0 0 24px 0; color: rgba(255, 255, 255, 0.7); font-size: 16px; line-height: 1.6;">
+                                      Olá! Toda a equipe do <strong style="color: #ffffff;">BlentBoost</strong> quer te agradecer imensamente pelo bug que você reportou recentemente na ferramenta de <strong>${bug.tool}</strong>.
+                                  </p>
+                                  <p style="margin: 0 0 32px 0; color: rgba(255, 255, 255, 0.7); font-size: 16px; line-height: 1.6;">
+                                      É graças à atenção impecável de usuários como você que conseguimos manter a plataforma rápida, estável e livre de erros. Seu relato já foi analisado e o problema está resolvido!
+                                  </p>
+                                  
+                                  <div style="text-align: center;">
+                                      <a href="${appUrl}" style="display: inline-block; background: linear-gradient(to right, #8b5cf6, #7e22ce); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 800; padding: 16px 32px; border-radius: 12px; letter-spacing: 0.5px; box-shadow: 0 8px 16px rgba(139, 92, 246, 0.3);">
+                                          VOLTAR AO BLENTBOOST
+                                      </a>
+                                  </div>
+                              </td>
+                          </tr>
+                          
+                          <!-- FOOTER -->
+                          <tr>
+                              <td style="padding: 24px 40px; background-color: rgba(0, 0, 0, 0.2); border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center;">
+                                  <p style="margin: 0; color: rgba(255, 255, 255, 0.3); font-size: 12px;">
+                                      &copy; 2026 BlentBoost. Feito com cuidado por Assesoria Blent.
+                                  </p>
+                              </td>
+                          </tr>
+                      </table>
+                  </td>
+              </tr>
+          </table>
+      </body>
+      </html>
+    `;
+
+    await sendEmailViaSendGrid(bug.user_email, "Obrigado pelo seu report no BlentBoost! 🚀", htmlEmail);
+
+    res.json({ success: true, message: "E-mail enviado com sucesso." });
+  } catch (err: any) {
+    console.error("Error sending thank you email:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 

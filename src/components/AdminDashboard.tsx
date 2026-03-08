@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import {
   Loader2, UserPlus, Trash2, ShieldAlert, Edit2, X, Check, Search,
   Infinity, Zap, History, ClipboardList, BarChart3, Users, Ban, CheckCircle2,
-  RefreshCw, TrendingUp, Target, BrainCircuit, Calendar, Crown, Clock, ChevronRight
+  RefreshCw, TrendingUp, Target, BrainCircuit, Calendar, Crown, Clock, ChevronRight, Bug, Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -12,7 +12,7 @@ import { cn } from '../lib/utils';
 
 const API_URL = import.meta.env.VITE_API_URL || '';
 
-type Tab = 'users' | 'forms' | 'analytics' | 'create';
+type Tab = 'users' | 'forms' | 'analytics' | 'create' | 'bugs';
 
 const PLAN_LABELS: Record<string, string> = {
   monthly: 'Mensal',
@@ -48,6 +48,13 @@ export const AdminDashboard: React.FC = () => {
   const [loadingForms, setLoadingForms] = useState(false);
   const [creating, setCreating] = useState(false);
 
+  // Bug Reports
+  const [bugs, setBugs] = useState<any[]>([]);
+  const [loadingBugs, setLoadingBugs] = useState(false);
+  const [resolvingBug, setResolvingBug] = useState<string | null>(null);
+  const [emailingBug, setEmailingBug] = useState<string | null>(null);
+  const [viewingBug, setViewingBug] = useState<any>(null);
+
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newName, setNewName] = useState('');
@@ -80,6 +87,9 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'forms' || activeTab === 'analytics') {
       fetchForms();
+    }
+    if (activeTab === 'bugs') {
+      fetchBugs();
     }
   }, [activeTab]);
 
@@ -135,6 +145,71 @@ export const AdminDashboard: React.FC = () => {
       toast.error('Erro ao carregar formulários.');
     } finally {
       setLoadingForms(false);
+    }
+  };
+
+  const fetchBugs = async () => {
+    setLoadingBugs(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: any = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch(`${API_URL}/api/admin/bug-reports`, { headers });
+      if (!res.ok) throw new Error('Falha ao obter bugs');
+      const data = await res.json();
+      setBugs(data.bugs || []);
+    } catch (err: any) {
+      toast.error('Erro ao carregar relatórios de bugs.');
+      console.error(err);
+    } finally {
+      setLoadingBugs(false);
+    }
+  };
+
+  const handleResolveBug = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevenir abrir o modal
+    setResolvingBug(id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: any = {};
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch(`${API_URL}/api/admin/bug-reports/${id}/resolve`, {
+        method: 'POST',
+        headers
+      });
+      if (!res.ok) throw new Error('Falha ao resolver bug');
+      toast.success('Bug marcado como resolvido!');
+      setBugs(prev => prev.map(b => b.id === id ? { ...b, status: 'resolved' } : b));
+      if (viewingBug?.id === id) setViewingBug({ ...viewingBug, status: 'resolved' });
+    } catch (err) {
+      toast.error('Erro ao marcar como resolvido.');
+    } finally {
+      setResolvingBug(null);
+    }
+  };
+
+  const handleSendThankYouEmail = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEmailingBug(id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: any = {};
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+
+      const res = await fetch(`${API_URL}/api/admin/bug-reports/${id}/thank-you`, {
+        method: 'POST',
+        headers
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Falha ao enviar e-mail');
+      toast.success('E-mail de agradecimento enviado!');
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao enviar e-mail.');
+    } finally {
+      setEmailingBug(null);
     }
   };
 
@@ -265,7 +340,10 @@ export const AdminDashboard: React.FC = () => {
     setViewingTxUser(userId);
     setLoadingTx(true);
     try {
-      const res = await fetch(`${API_URL}/api/admin/transactions/${userId}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: any = {};
+      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
+      const res = await fetch(`${API_URL}/api/admin/transactions/${userId}`, { headers });
       const data = await res.json();
       setTransactions(data);
     } catch {
@@ -322,6 +400,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'users', label: 'Usuários', icon: <Users className="w-4 h-4" /> },
     { id: 'forms', label: 'Formulários', icon: <ClipboardList className="w-4 h-4" /> },
     { id: 'analytics', label: 'Analytics', icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'bugs', label: 'Bugs', icon: <Bug className="w-4 h-4" /> },
     { id: 'create', label: 'Criar Usuário', icon: <UserPlus className="w-4 h-4" /> },
   ];
 
@@ -727,6 +806,179 @@ export const AdminDashboard: React.FC = () => {
           </form>
         </motion.div>
       )}
+
+      {/* === TAB: BUGS === */}
+      {activeTab === 'bugs' && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-[#14141e] p-6 sm:p-8 rounded-3xl border border-white/[0.06] flex flex-col flex-1 min-h-[520px]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
+              <Bug className="w-4 h-4" />
+              Relatórios de Bugs ({bugs.length})
+            </h2>
+          </div>
+
+          {loadingBugs ? (
+            <div className="flex-1 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-white/20" /></div>
+          ) : bugs.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-white/30 text-sm">Nenhum bug reportado.</div>
+          ) : (
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+              {bugs.map((bug) => (
+                <div
+                  key={bug.id}
+                  onClick={() => setViewingBug(bug)}
+                  className="bg-white/[0.02] hover:bg-white/[0.04] transition-colors border border-white/[0.06] rounded-2xl p-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4 cursor-pointer"
+                >
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={bug.profiles?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(bug.profiles?.name || 'U')}&background=14141e&color=fff`}
+                      alt={bug.profiles?.name}
+                      className="w-10 h-10 rounded-full object-cover border border-white/10 shrink-0"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-bold text-white">{bug.profiles?.name || 'Desconhecido'}</p>
+                        <span className={cn(
+                          'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
+                          bug.status === 'resolved'
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                        )}>
+                          {bug.status === 'resolved' ? 'Corrigido' : 'Pendente'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-white/40">{bug.user_email} • Ferramenta: <span className="text-white/70">{bug.tool}</span></p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {bug.status !== 'resolved' && (
+                      <button
+                        onClick={(e) => handleResolveBug(bug.id, e)}
+                        disabled={resolvingBug === bug.id}
+                        className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                      >
+                        {resolvingBug === bug.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                        <span className="hidden sm:inline">Corrigido</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => handleSendThankYouEmail(bug.id, e)}
+                      disabled={emailingBug === bug.id}
+                      className="p-2 bg-violet-500/10 text-violet-400 hover:bg-violet-600 hover:text-white rounded-lg text-xs font-bold transition-all flex items-center gap-2"
+                    >
+                      {emailingBug === bug.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                      <span className="hidden sm:inline">Agradecer</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* Bug Details Modal */}
+      <AnimatePresence>
+        {viewingBug && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto"
+            onClick={() => setViewingBug(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#14141e] border border-white/[0.08] rounded-3xl w-full max-w-2xl p-8 shadow-2xl relative"
+            >
+              <button
+                onClick={() => setViewingBug(null)}
+                className="absolute top-6 right-6 p-2 bg-white/5 text-white/40 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shrink-0">
+                  <Bug className="w-6 h-6 text-white/40" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black tracking-tight text-white">Detalhes do Bug</h3>
+                  <p className="text-sm font-medium text-white/40 mt-1">
+                    Enviado em {new Date(viewingBug.created_at).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2">Usuário</p>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={viewingBug.profiles?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(viewingBug.profiles?.name || 'U')}&background=14141e&color=fff`}
+                        alt={viewingBug.profiles?.name}
+                        className="w-8 h-8 rounded-full object-cover border border-white/10 shrink-0"
+                      />
+                      <div>
+                        <p className="text-sm font-bold text-white">{viewingBug.profiles?.name || 'Desconhecido'}</p>
+                        <p className="text-[10px] text-white/40">{viewingBug.user_email}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-2">Informações</p>
+                    <p className="text-xs text-white/70 mb-1">
+                      <strong className="text-white">Ferramenta:</strong> {viewingBug.tool}
+                    </p>
+                    <p className="text-xs text-white/70">
+                      <strong className="text-white">Bugs enviados (Total):</strong> {viewingBug.total_reports_by_user || 1}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Descrição do Problema</p>
+                    <span className={cn(
+                      'px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest',
+                      viewingBug.status === 'resolved'
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                    )}>
+                      {viewingBug.status === 'resolved' ? 'Corrigido' : 'Pendente'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-white/80 whitespace-pre-wrap leading-relaxed">
+                    {viewingBug.description}
+                  </p>
+                </div>
+
+                <div className="flex gap-4 pt-2">
+                  {viewingBug.status !== 'resolved' && (
+                    <button
+                      onClick={() => handleResolveBug(viewingBug.id, Object.create(null) as any)}
+                      disabled={resolvingBug === viewingBug.id}
+                      className="flex-1 py-3.5 bg-emerald-500/10 hover:bg-emerald-500 border border-emerald-500/20 hover:border-emerald-500 text-emerald-400 hover:text-white rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                    >
+                      {resolvingBug === viewingBug.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
+                      Marcar como Corrigido
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleSendThankYouEmail(viewingBug.id)}
+                    disabled={emailingBug === viewingBug.id}
+                    className="flex-1 py-3.5 bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all"
+                  >
+                    {emailingBug === viewingBug.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-5 h-5" />}
+                    Enviar E-mail de Agradecimento
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Token Transaction History Modal */}
       <AnimatePresence>

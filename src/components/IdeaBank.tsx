@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lightbulb, Plus, Zap, Loader2, Trash2, X, Palette, Check, Maximize2, CheckCircle2, History, Clock, Save, AlertCircle, CalendarDays } from 'lucide-react';
+import { Lightbulb, Plus, Zap, Loader2, Trash2, X, Palette, Check, Maximize2, CheckCircle2, History, Clock, Save, AlertCircle, CalendarDays, Folder, FolderOpen, FolderPlus, SquareCheck, GripVertical, MoreHorizontal, Pencil } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { optimizeIdea } from '../services/gemini';
@@ -9,9 +9,23 @@ import { cn } from '../lib/utils';
 import { APP_VERSION } from '../config/appVersion';
 
 
+interface ChecklistItem {
+    id: string;
+    text: string;
+    done: boolean;
+}
+
+interface IdeaFolder {
+    id: number;
+    name: string;
+    color: string;
+    created_at: string;
+}
+
 interface Idea {
     id: number;
     created_at: string;
+    folder_id?: number | null;
     content: {
         note: string;
         color?: string;
@@ -20,6 +34,7 @@ interface Idea {
         facts?: string[];
         cta?: string;
         isCompleted?: boolean;
+        checklist?: ChecklistItem[];
     };
 }
 
@@ -29,6 +44,10 @@ const NOTE_COLORS = [
     { name: 'Rosa', bg: 'bg-[#fce7f3]', text: 'text-pink-900', border: 'border-pink-200', dot: 'bg-pink-400' },
     { name: 'Verde', bg: 'bg-[#dcfce7]', text: 'text-emerald-900', border: 'border-emerald-200', dot: 'bg-emerald-400' },
     { name: 'Roxo', bg: 'bg-[#f3e8ff]', text: 'text-purple-900', border: 'border-purple-200', dot: 'bg-purple-400' },
+];
+
+const FOLDER_COLORS = [
+    'bg-violet-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-orange-500',
 ];
 
 const LOCAL_STORAGE_KEY = 'Blent_boost_idea_drafts';
@@ -48,6 +67,17 @@ export const IdeaBank: React.FC = () => {
     const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
     const [scheduledTime, setScheduledTime] = useState('12:00');
     const [isSendingToPlanner, setIsSendingToPlanner] = useState(false);
+
+    // Folder states
+    const [folders, setFolders] = useState<IdeaFolder[]>([]);
+    const [selectedFolderId, setSelectedFolderId] = useState<number | null | 'all'>('all');
+    const [showFolderMenu, setShowFolderMenu] = useState(false);
+    const [showNewFolderInput, setShowNewFolderInput] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [editingFolder, setEditingFolder] = useState<IdeaFolder | null>(null);
+
+    // Checklist states
+    const [newChecklistItemText, setNewChecklistItemText] = useState('');
 
     // Refs for synchronization and state tracking
     const selectedIdeaRef = useRef<Idea | null>(null);
@@ -73,6 +103,7 @@ export const IdeaBank: React.FC = () => {
 
     useEffect(() => {
         fetchIdeas();
+        fetchFolders();
 
         // Final sync attempt on unmount
         return () => {
@@ -114,6 +145,103 @@ export const IdeaBank: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const fetchFolders = async () => {
+        if (!user) return;
+        try {
+            const { data, error } = await supabase
+                .from('idea_folders')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: true });
+            if (error) throw error;
+            setFolders((data || []) as IdeaFolder[]);
+        } catch (err) {
+            console.error('Error fetching folders:', err);
+        }
+    };
+
+    const handleCreateFolder = async () => {
+        if (!user || !newFolderName.trim()) return;
+        try {
+            const { data, error } = await supabase
+                .from('idea_folders')
+                .insert([{ user_id: user.id, name: newFolderName.trim(), color: FOLDER_COLORS[folders.length % FOLDER_COLORS.length] }])
+                .select().single();
+            if (error) throw error;
+            setFolders(prev => [...prev, data as IdeaFolder]);
+            setNewFolderName('');
+            setShowNewFolderInput(false);
+            toast.success('Pasta criada!');
+        } catch (err) {
+            toast.error('Erro ao criar pasta.');
+        }
+    };
+
+    const handleDeleteFolder = async (folderId: number) => {
+        try {
+            const { error } = await supabase.from('idea_folders').delete().eq('id', folderId);
+            if (error) throw error;
+            setFolders(prev => prev.filter(f => f.id !== folderId));
+            // Unlink ideas that were in this folder
+            setIdeas(prev => prev.map(i => i.folder_id === folderId ? { ...i, folder_id: null } : i));
+            if (selectedFolderId === folderId) setSelectedFolderId('all');
+            toast.success('Pasta removida.');
+        } catch (err) {
+            toast.error('Erro ao deletar pasta.');
+        }
+    };
+
+    const handleRenameFolder = async (folder: IdeaFolder, newName: string) => {
+        if (!newName.trim()) return;
+        try {
+            const { error } = await supabase.from('idea_folders').update({ name: newName.trim() }).eq('id', folder.id);
+            if (error) throw error;
+            setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name: newName.trim() } : f));
+            setEditingFolder(null);
+        } catch (err) {
+            toast.error('Erro ao renomear pasta.');
+        }
+    };
+
+    const handleMoveIdeaToFolder = async (ideaId: number, folderId: number | null) => {
+        try {
+            const { error } = await supabase.from('library').update({ folder_id: folderId }).eq('id', ideaId);
+            if (error) throw error;
+            setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, folder_id: folderId } : i));
+            if (selectedIdea?.id === ideaId) setSelectedIdea(prev => prev ? { ...prev, folder_id: folderId } : null);
+        } catch (err) {
+            toast.error('Erro ao mover ideia.');
+        }
+    };
+
+    // --- Checklist helpers ---
+    const handleAddChecklistItem = (idea: Idea) => {
+        if (!newChecklistItemText.trim()) return;
+        const newItem: ChecklistItem = { id: crypto.randomUUID(), text: newChecklistItemText.trim(), done: false };
+        const checklist = [...(idea.content.checklist || []), newItem];
+        handleUpdateIdeaContent(idea.id, { ...idea.content, checklist });
+        setNewChecklistItemText('');
+    };
+
+    const handleToggleChecklistItem = (idea: Idea, itemId: string) => {
+        const checklist = (idea.content.checklist || []).map(item =>
+            item.id === itemId ? { ...item, done: !item.done } : item
+        );
+        handleUpdateIdeaContent(idea.id, { ...idea.content, checklist });
+    };
+
+    const handleRemoveChecklistItem = (idea: Idea, itemId: string) => {
+        const checklist = (idea.content.checklist || []).filter(item => item.id !== itemId);
+        handleUpdateIdeaContent(idea.id, { ...idea.content, checklist });
+    };
+
+    const handleUpdateChecklistItemText = (idea: Idea, itemId: string, text: string) => {
+        const checklist = (idea.content.checklist || []).map(item =>
+            item.id === itemId ? { ...item, text } : item
+        );
+        handleUpdateIdeaContent(idea.id, { ...idea.content, checklist });
     };
 
     const handleAddIdea = async () => {
@@ -291,13 +419,17 @@ export const IdeaBank: React.FC = () => {
 
     const activeIdeas = ideas.filter(i => !i.content.isCompleted);
     const completedIdeas = ideas.filter(i => i.content.isCompleted);
-    const currentList = showCompleted ? completedIdeas : activeIdeas;
+    const baseList = showCompleted ? completedIdeas : activeIdeas;
+    const currentList = selectedFolderId === 'all'
+        ? baseList
+        : baseList.filter(i => i.folder_id === (selectedFolderId as number | null));
 
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0d0d12] relative overflow-hidden">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2" />
 
             <header className="border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-[#0d0d12]/60 backdrop-blur-xl sticky top-0 z-40">
+                {/* Top row */}
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-6">
                         <div className="flex items-center gap-3">
@@ -358,7 +490,85 @@ export const IdeaBank: React.FC = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Folder navigation row */}
+                <div className="max-w-7xl mx-auto px-6 pb-3 flex items-center gap-2 overflow-x-auto custom-scrollbar" style={{ scrollbarWidth: 'none' }}>
+                    <button
+                        onClick={() => setSelectedFolderId('all')}
+                        className={cn(
+                            "flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                            selectedFolderId === 'all'
+                                ? "bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white"
+                                : "text-slate-400 dark:text-white/30 hover:text-slate-700 dark:hover:text-white/70"
+                        )}
+                    >
+                        <FolderOpen className="w-3.5 h-3.5" />
+                        Todas
+                    </button>
+                    {folders.map(folder => (
+                        <div key={folder.id} className="flex-shrink-0 flex items-center gap-1 group/folder">
+                            {editingFolder?.id === folder.id ? (
+                                <input
+                                    autoFocus
+                                    defaultValue={folder.name}
+                                    onBlur={e => handleRenameFolder(folder, e.target.value)}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleRenameFolder(folder, e.currentTarget.value); if (e.key === 'Escape') setEditingFolder(null); }}
+                                    className="px-2 py-1 text-[10px] font-black uppercase tracking-widest bg-white dark:bg-white/10 border border-violet-500/50 rounded-lg outline-none text-slate-900 dark:text-white w-28"
+                                />
+                            ) : (
+                                <button
+                                    onClick={() => setSelectedFolderId(folder.id)}
+                                    className={cn(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                        selectedFolderId === folder.id
+                                            ? "bg-violet-600 text-white shadow-lg shadow-violet-500/20"
+                                            : "bg-slate-100 dark:bg-white/[0.03] text-slate-500 dark:text-white/40 hover:text-slate-800 dark:hover:text-white/70 border border-slate-200 dark:border-white/[0.06]"
+                                    )}
+                                >
+                                    <Folder className="w-3.5 h-3.5" />
+                                    {folder.name}
+                                </button>
+                            )}
+                            <div className="opacity-0 group-hover/folder:opacity-100 transition-opacity flex items-center gap-0.5">
+                                <button onClick={() => setEditingFolder(folder)} className="p-0.5 rounded text-slate-400 dark:text-white/30 hover:text-slate-700 dark:hover:text-white transition-colors">
+                                    <Pencil className="w-3 h-3" />
+                                </button>
+                                <button onClick={() => handleDeleteFolder(folder.id)} className="p-0.5 rounded text-slate-400 dark:text-white/30 hover:text-red-500 transition-colors">
+                                    <X className="w-3 h-3" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+
+                    {showNewFolderInput ? (
+                        <div className="flex-shrink-0 flex items-center gap-1">
+                            <input
+                                autoFocus
+                                value={newFolderName}
+                                onChange={e => setNewFolderName(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') { setShowNewFolderInput(false); setNewFolderName(''); } }}
+                                placeholder="Nome da pasta..."
+                                className="px-2 py-1 text-[10px] font-black uppercase tracking-widest bg-white dark:bg-white/10 border border-yellow-500/50 rounded-lg outline-none text-slate-900 dark:text-white w-36 placeholder:text-black/20 dark:placeholder:text-white/20"
+                            />
+                            <button onClick={handleCreateFolder} className="p-1 rounded-lg bg-yellow-500 text-black">
+                                <Check className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => { setShowNewFolderInput(false); setNewFolderName(''); }} className="p-1 rounded-lg text-slate-400 hover:text-red-500">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setShowNewFolderInput(true)}
+                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/20 hover:text-slate-600 dark:hover:text-white/60 border border-dashed border-slate-200 dark:border-white/10 transition-all hover:border-yellow-500/50"
+                        >
+                            <FolderPlus className="w-3.5 h-3.5" />
+                            Nova Pasta
+                        </button>
+                    )}
+                </div>
             </header>
+
 
             <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar relative z-10">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
@@ -437,13 +647,40 @@ export const IdeaBank: React.FC = () => {
                                             <h3 className={cn("text-lg font-black tracking-tight leading-tight line-clamp-2 mb-2", style.text)}>
                                                 {idea.content.title || (idea.content.note ? 'Insight Provisório' : 'Nova Anotação')}
                                             </h3>
-                                            <p className={cn("text-sm font-medium opacity-70 line-clamp-4", style.text)}>
+                                            <p className={cn("text-sm font-medium opacity-70 line-clamp-3", style.text)}>
                                                 {idea.content.note || 'Sem conteúdo ainda...'}
                                             </p>
                                         </div>
 
+                                        {/* Checklist progress */}
+                                        {idea.content.checklist && idea.content.checklist.length > 0 && (() => {
+                                            const total = idea.content.checklist.length;
+                                            const done = idea.content.checklist.filter(c => c.done).length;
+                                            const pct = Math.round((done / total) * 100);
+                                            return (
+                                                <div className="mt-3 space-y-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={cn("text-[9px] font-black uppercase tracking-widest opacity-50", style.text)}>
+                                                            <SquareCheck className="w-3 h-3 inline mr-1" />{done}/{total}
+                                                        </span>
+                                                        <span className={cn("text-[9px] font-black opacity-50", style.text)}>{pct}%</span>
+                                                    </div>
+                                                    <div className="h-1 rounded-full bg-black/10 overflow-hidden">
+                                                        <div className="h-full rounded-full bg-black/30 transition-all duration-500" style={{ width: `${pct}%` }} />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
                                         <div className="mt-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className={cn("text-[9px] font-black uppercase tracking-tighter", style.text)}>Ver Detalhes</span>
+                                            <div className="flex items-center gap-2">
+                                                {idea.folder_id && folders.find(f => f.id === idea.folder_id) && (
+                                                    <span className={cn("text-[9px] font-black uppercase tracking-tight flex items-center gap-1 opacity-50", style.text)}>
+                                                        <Folder className="w-3 h-3" />
+                                                        {folders.find(f => f.id === idea.folder_id)?.name}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <Maximize2 className={cn("w-4 h-4", style.text)} />
                                         </div>
 
@@ -453,6 +690,7 @@ export const IdeaBank: React.FC = () => {
                                             </div>
                                         )}
                                     </motion.div>
+
                                 );
                             })}
                         </AnimatePresence>
@@ -556,20 +794,116 @@ export const IdeaBank: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto custom-scrollbar-light pr-4">
-                                    <textarea
-                                        autoFocus
-                                        value={selectedIdea.content.note}
-                                        onBlur={handleBlur}
-                                        onChange={(e) => handleUpdateIdeaContent(selectedIdea.id, { ...selectedIdea.content, note: e.target.value })}
-                                        className={cn(
-                                            "w-full bg-transparent border-none focus:ring-0 p-0 text-xl md:text-3xl font-bold placeholder:text-black/10 min-h-[400px] resize-none",
-                                            getNoteStyle(selectedIdea.content.color).text,
-                                            selectedIdea.content.isCompleted && "line-through opacity-50"
-                                        )}
-                                        placeholder="O que você está pensando? Digite aqui sua ideia..."
-                                    />
+                                <div className="flex-1 overflow-y-auto custom-scrollbar-light pr-4 space-y-6">
+                                    {/* Folder selector */}
+                                    {folders.length > 0 && (
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-black/30">Pasta:</span>
+                                            <button
+                                                onClick={() => handleMoveIdeaToFolder(selectedIdea.id, null)}
+                                                className={cn(
+                                                    "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border",
+                                                    !selectedIdea.folder_id ? "bg-black/10 border-black/20 text-black/60" : "border-black/10 text-black/30 hover:border-black/20 hover:text-black/50"
+                                                )}
+                                            >
+                                                <FolderOpen className="w-3 h-3" />
+                                                Nenhuma
+                                            </button>
+                                            {folders.map(f => (
+                                                <button
+                                                    key={f.id}
+                                                    onClick={() => handleMoveIdeaToFolder(selectedIdea.id, f.id)}
+                                                    className={cn(
+                                                        "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all border",
+                                                        selectedIdea.folder_id === f.id ? "bg-violet-600 border-violet-600 text-white" : "border-black/10 text-black/30 hover:border-black/20 hover:text-black/50"
+                                                    )}
+                                                >
+                                                    <Folder className="w-3 h-3" />
+                                                    {f.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Checklist section */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-black/30 flex items-center gap-1.5">
+                                                <SquareCheck className="w-3 h-3" />
+                                                Checklist / Passo a Passo
+                                            </span>
+                                            {selectedIdea.content.checklist && selectedIdea.content.checklist.length > 0 && (
+                                                <span className="text-[9px] font-black text-black/30">
+                                                    {selectedIdea.content.checklist.filter(c => c.done).length}/{selectedIdea.content.checklist.length} concluídos
+                                                </span>
+                                            )}
+                                        </div>
+                                        {selectedIdea.content.checklist && selectedIdea.content.checklist.map(item => (
+                                            <div key={item.id} className="flex items-center gap-2 group/item">
+                                                <button
+                                                    onClick={() => handleToggleChecklistItem(selectedIdea, item.id)}
+                                                    className={cn(
+                                                        "w-5 h-5 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-all",
+                                                        item.done ? "bg-emerald-500 border-emerald-500" : "border-black/20 hover:border-black/40"
+                                                    )}
+                                                >
+                                                    {item.done && <Check className="w-3 h-3 text-white" />}
+                                                </button>
+                                                <input
+                                                    type="text"
+                                                    value={item.text}
+                                                    onChange={e => handleUpdateChecklistItemText(selectedIdea, item.id, e.target.value)}
+                                                    className={cn(
+                                                        "flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm font-medium outline-none",
+                                                        item.done ? "line-through opacity-40" : "opacity-80",
+                                                        getNoteStyle(selectedIdea.content.color).text
+                                                    )}
+                                                />
+                                                <button
+                                                    onClick={() => handleRemoveChecklistItem(selectedIdea, item.id)}
+                                                    className="opacity-0 group-hover/item:opacity-100 transition-opacity p-1 rounded text-black/20 hover:text-red-500"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <div className="w-5 h-5 rounded-md border-2 border-dashed border-black/10 flex-shrink-0" />
+                                            <input
+                                                type="text"
+                                                value={newChecklistItemText}
+                                                onChange={e => setNewChecklistItemText(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddChecklistItem(selectedIdea); } }}
+                                                placeholder="+ Adicionar passo..."
+                                                className={cn(
+                                                    "flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm font-medium outline-none placeholder:text-black/20",
+                                                    getNoteStyle(selectedIdea.content.color).text
+                                                )}
+                                            />
+                                            {newChecklistItemText.trim() && (
+                                                <button onClick={() => handleAddChecklistItem(selectedIdea)} className="p-1 rounded-lg bg-black/10 text-black/60 hover:bg-black/20 transition-colors">
+                                                    <Check className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-black/5 pt-4">
+                                        <textarea
+                                            autoFocus
+                                            value={selectedIdea.content.note}
+                                            onBlur={handleBlur}
+                                            onChange={(e) => handleUpdateIdeaContent(selectedIdea.id, { ...selectedIdea.content, note: e.target.value })}
+                                            className={cn(
+                                                "w-full bg-transparent border-none focus:ring-0 p-0 text-xl md:text-2xl font-bold placeholder:text-black/10 min-h-[180px] resize-none",
+                                                getNoteStyle(selectedIdea.content.color).text,
+                                                selectedIdea.content.isCompleted && "line-through opacity-50"
+                                            )}
+                                            placeholder="O que você está pensando? Digite aqui sua ideia..."
+                                        />
+                                    </div>
                                 </div>
+
 
                                 <div className="mt-8 pt-8 border-t border-black/5 flex flex-col gap-4">
                                     <div className="flex items-center justify-between">
