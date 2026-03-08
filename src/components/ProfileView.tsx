@@ -16,7 +16,15 @@ import {
   Eye,
   EyeOff,
   BookOpen,
-  ExternalLink
+  ExternalLink,
+  CreditCard,
+  ShieldCheck,
+  AlertCircle,
+  Calendar,
+  XCircle,
+  CheckCircle,
+  ClockIcon,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { UserProfile, LibraryItem } from '../types';
@@ -43,7 +51,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'library' | 'settings'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'library' | 'settings' | 'subscription'>(initialTab);
+
+  // Subscription cancellation state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCanceling, setIsCanceling] = useState(false);
 
   // Memory Card Slots State
   const [activeAudienceSlot, setActiveAudienceSlot] = useState(0);
@@ -100,6 +113,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
     };
     fetchData();
   }, [userEmail]);
+
+  const handleCancelSubscription = async () => {
+    if (!cancelReason.trim() || cancelReason.trim().length < 5) {
+      toast.error('Por favor, descreva o motivo do cancelamento.');
+      return;
+    }
+    setIsCanceling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error('Não autenticado');
+
+      const res = await fetch('/api/user/cancel-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ reason: cancelReason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
+
+      toast.success(data.message || 'Assinatura cancelada com sucesso.');
+      setShowCancelModal(false);
+      setCancelReason('');
+      // Refresh profile to reflect canceled status
+      setProfile(prev => prev ? { ...prev, subscription_status: 'canceled' } : null);
+    } catch (err: any) {
+      toast.error(err.message || 'Erro ao cancelar assinatura.');
+    } finally {
+      setIsCanceling(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!profile) return;
@@ -279,6 +323,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
               Configurar Perfil
             </button>
             <button
+              onClick={() => setActiveTab('subscription')}
+              className={cn(
+                "w-full p-4 rounded-2xl flex items-center gap-3 transition-all font-black uppercase tracking-widest text-[10px]",
+                activeTab === 'subscription'
+                  ? "bg-violet-600 text-white shadow-lg shadow-violet-500/20"
+                  : "bg-slate-100 dark:bg-white/[0.02] text-slate-500 dark:text-white/40 hover:bg-white/[0.06] hover:text-slate-900 dark:text-white"
+              )}
+            >
+              <CreditCard className={cn("w-4 h-4", activeTab === 'subscription' ? "text-white" : "text-slate-500 dark:text-white/40")} />
+              Minha Assinatura
+            </button>
+            <button
               onClick={signOut}
               className="w-full p-4 rounded-2xl flex items-center gap-3 transition-all font-black uppercase tracking-widest text-[10px] bg-red-500/10 text-red-500 hover:bg-red-500/20 hover:text-red-400 mt-6 border border-red-500/20"
             >
@@ -407,7 +463,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
                 )}
               </div>
             </motion.div>
-          ) : (
+          ) : activeTab === 'settings' ? (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -580,6 +636,168 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
                   {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-8 max-w-2xl"
+            >
+              {/* ===================== SUBSCRIPTION PANEL ===================== */}
+              <header>
+                <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white mb-2">Minha Assinatura</h1>
+                <p className="text-sm font-medium text-slate-500 dark:text-white/40">Gerencie seu plano e informações de cobrança.</p>
+              </header>
+
+              {/* No subscription */}
+              {(!profile?.subscription_status || profile.subscription_status === 'inactive') ? (
+                <div className="bg-white dark:bg-[#14141e] p-8 rounded-3xl border border-slate-200 dark:border-white/[0.06] text-center space-y-4">
+                  <div className="w-16 h-16 mx-auto bg-slate-100 dark:bg-white/[0.03] rounded-full flex items-center justify-center">
+                    <CreditCard className="w-7 h-7 text-slate-400 dark:text-white/20" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-black text-slate-900 dark:text-white mb-1">Nenhuma assinatura ativa</p>
+                    <p className="text-sm text-slate-500 dark:text-white/40">Você ainda não possui um plano ativo no BlentBoost.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Plan card */}
+                  <div className="bg-white dark:bg-[#14141e] rounded-3xl border border-slate-200 dark:border-white/[0.06] overflow-hidden">
+                    {/* Header gradient */}
+                    <div className="bg-gradient-to-r from-violet-900/60 to-purple-900/40 p-6 flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-6 h-6 text-violet-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-violet-300/70 mb-0.5">Plano Atual</p>
+                        <h2 className="text-xl font-black text-white capitalize">
+                          {profile?.subscription_plan === 'monthly' ? 'Mensal' : profile?.subscription_plan === 'quarterly' ? 'Trimestral' : profile?.subscription_plan === 'annual' ? 'Anual' : (profile?.subscription_plan || 'Assinatura')}
+                        </h2>
+                      </div>
+                      {/* Status badge */}
+                      <div className={cn(
+                        "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5",
+                        profile?.subscription_status === 'active' ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" :
+                        profile?.subscription_status === 'trialing' ? "bg-blue-500/15 text-blue-400 border border-blue-500/20" :
+                        profile?.subscription_status === 'past_due' ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" :
+                        profile?.subscription_status === 'canceled' ? "bg-red-500/15 text-red-400 border border-red-500/20" :
+                        "bg-slate-500/15 text-slate-400 border border-slate-500/20"
+                      )}>
+                        {profile?.subscription_status === 'active' && <CheckCircle className="w-3 h-3" />}
+                        {profile?.subscription_status === 'trialing' && <ClockIcon className="w-3 h-3" />}
+                        {profile?.subscription_status === 'past_due' && <AlertCircle className="w-3 h-3" />}
+                        {profile?.subscription_status === 'canceled' && <XCircle className="w-3 h-3" />}
+                        {profile?.subscription_status === 'active' ? 'Ativo' :
+                         profile?.subscription_status === 'trialing' ? 'Em teste' :
+                         profile?.subscription_status === 'past_due' ? 'Pagamento atrasado' :
+                         profile?.subscription_status === 'canceled' ? 'Cancelado' : profile?.subscription_status}
+                      </div>
+                    </div>
+
+                    {/* Billing details grid */}
+                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="bg-slate-50 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-200 dark:border-white/[0.05] space-y-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calendar className="w-4 h-4 text-violet-400" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">Último Pagamento</p>
+                        </div>
+                        <p className="text-base font-black text-slate-900 dark:text-white">
+                          {profile?.last_payment_date
+                            ? new Date(profile.last_payment_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+                            : '—'}
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-200 dark:border-white/[0.05] space-y-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <ClockIcon className="w-4 h-4 text-violet-400" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">
+                            {profile?.subscription_status === 'canceled' ? 'Acesso até' : 'Próxima Cobrança'}
+                          </p>
+                        </div>
+                        <p className="text-base font-black text-slate-900 dark:text-white">
+                          {profile?.subscription_end_date
+                            ? new Date(profile.subscription_end_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+                            : '—'}
+                        </p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-200 dark:border-white/[0.05] space-y-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <User className="w-4 h-4 text-violet-400" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">E-mail</p>
+                        </div>
+                        <p className="text-base font-black text-slate-900 dark:text-white truncate">{profile?.email || '—'}</p>
+                      </div>
+
+                      <div className="bg-slate-50 dark:bg-white/[0.02] rounded-2xl p-4 border border-slate-200 dark:border-white/[0.05] space-y-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CreditCard className="w-4 h-4 text-violet-400" />
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">Membro desde</p>
+                        </div>
+                        <p className="text-base font-black text-slate-900 dark:text-white">
+                          {profile?.created_at
+                            ? new Date(profile.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+                            : '—'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cancel section — very discrete */}
+                  {profile?.subscription_status !== 'canceled' && (
+                    <div className="pt-2">
+                      {!showCancelModal ? (
+                        <button
+                          onClick={() => setShowCancelModal(true)}
+                          className="text-[10px] font-medium text-slate-400/50 dark:text-white/20 hover:text-red-400/70 transition-colors underline underline-offset-2 flex items-center gap-1"
+                        >
+                          <ChevronDown className="w-3 h-3" />
+                          Deseja cancelar sua assinatura?
+                        </button>
+                      ) : (
+                        <div className="bg-white dark:bg-[#14141e] rounded-2xl border border-red-500/20 p-6 space-y-4">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-black text-slate-900 dark:text-white mb-1">Cancelar Assinatura</p>
+                              <p className="text-[11px] text-slate-500 dark:text-white/40 leading-relaxed">
+                                Ao cancelar, você continuará com acesso até o fim do período atual. Sua opinião é muito importante para nós.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30">Motivo do Cancelamento *</label>
+                            <textarea
+                              value={cancelReason}
+                              onChange={(e) => setCancelReason(e.target.value)}
+                              placeholder="Por favor, nos conte o motivo pelo qual você está cancelando para que possamos melhorar..."
+                              className="w-full p-4 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-violet-500/50 transition-all text-sm font-medium resize-none h-[100px]"
+                            />
+                          </div>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => { setShowCancelModal(false); setCancelReason(''); }}
+                              className="flex-1 py-3 text-[11px] font-black uppercase tracking-widest bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-white/60 rounded-xl hover:bg-slate-200 dark:hover:bg-white/[0.08] transition-all"
+                            >
+                              Manter Assinatura
+                            </button>
+                            <button
+                              onClick={handleCancelSubscription}
+                              disabled={isCanceling || cancelReason.trim().length < 5}
+                              className="flex-1 py-3 text-[11px] font-black uppercase tracking-widest bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                              {isCanceling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                              {isCanceling ? 'Cancelando...' : 'Confirmar Cancelamento'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
         </div>

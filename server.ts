@@ -173,6 +173,18 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
         const planType = session.metadata?.plan_type || 'monthly';
         const tokens = PLAN_TOKENS[planType] || 1000;
 
+        // Fetch subscription details from Stripe to get period end date
+        let subscriptionEndDate: string | null = null;
+        let stripeSubscriptionId: string | null = session.subscription as string | null;
+        if (stripeSubscriptionId) {
+          try {
+            const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId) as any;
+            subscriptionEndDate = new Date(stripeSubscription.current_period_end * 1000).toISOString();
+          } catch (e) {
+            console.error('Failed to retrieve subscription from Stripe:', e);
+          }
+        }
+
         const { error } = await supabaseAdmin
           .from('profiles')
           .update({
@@ -181,6 +193,8 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
             token_balance: tokens,
             last_payment_date: new Date().toISOString(),
             stripe_customer_id: session.customer as string,
+            stripe_subscription_id: stripeSubscriptionId,
+            subscription_end_date: subscriptionEndDate,
           })
           .eq('id', userId);
 
@@ -320,16 +334,23 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
     }
 
     case 'customer.subscription.updated': {
-      const subscription = event.data.object as Stripe.Subscription;
+      const subscription = event.data.object as any;
       const customerId = subscription.customer as string;
       const status = subscription.status;
+      const endDate = subscription.current_period_end
+        ? new Date(subscription.current_period_end * 1000).toISOString()
+        : null;
 
       await supabaseAdmin
         .from('profiles')
-        .update({ subscription_status: status })
+        .update({
+          subscription_status: status,
+          subscription_end_date: endDate,
+          stripe_subscription_id: subscription.id,
+        })
         .eq('stripe_customer_id', customerId);
 
-      console.log(`=  Subscription updated for customer: ${customerId}. Status: ${status}`);
+      console.log(`=  Subscription updated for customer: ${customerId}. Status: ${status}. Ends: ${endDate}`);
       break;
     }
 
@@ -338,6 +359,63 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
   }
 
   res.json({ received: true });
+});
+
+
+// =============================================
+// CANCEL SUBSCRIPTION
+// =============================================
+app.post("/api/user/cancel-subscription", authenticateUser, async (req: any, res) => {
+  const userId = req.user.id;
+  const { reason } = req.body;
+
+  if (!reason || reason.trim().length < 5) {
+    return res.status(400).json({ error: "Por favor, informe o motivo do cancelamento." });
+  }
+
+  try {
+    // Get the user's subscription ID and email
+    const { data: profileData, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('stripe_subscription_id, email, name, subscription_plan')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !profileData) {
+      return res.status(404).json({ error: "Perfil não encontrado." });
+    }
+
+    if (!profileData.stripe_subscription_id) {
+      return res.status(400).json({ error: "Nenhuma assinatura ativa encontrada para cancelar." });
+    }
+
+    // Cancel at period end in Stripe (does not immediately cancel, lets user use until end)
+    await stripe.subscriptions.update(profileData.stripe_subscription_id, {
+      cancel_at_period_end: true,
+    } as any);
+
+    // Send email to support with the reason
+    const cancelHtml = `
+      <h2>Solicitação de Cancelamento de Assinatura</h2>
+      <p><strong>Usuário:</strong> ${profileData.name || 'N/A'}</p>
+      <p><strong>E-mail:</strong> ${profileData.email}</p>
+      <p><strong>Plano:</strong> ${profileData.subscription_plan || 'N/A'}</p>
+      <h3>Motivo do Cancelamento:</h3>
+      <pre style="white-space: pre-wrap; font-family: sans-serif; background: #f5f5f5; padding: 12px; border-radius: 6px;">${reason}</pre>
+      <p style="color: #888; font-size: 12px;">A assinatura foi configurada para não renovar ao fim do ciclo atual.</p>
+    `;
+
+    await sendEmailViaSendGrid(
+      "contato@assessoriablent.com",
+      `Cancelamento de Assinatura: ${profileData.email}`,
+      cancelHtml
+    );
+
+    res.json({ success: true, message: "Assinatura cancelada. Você continua com acesso até o fim do período atual." });
+  } catch (err: any) {
+    console.error("Erro ao cancelar assinatura:", err);
+    res.status(500).json({ error: "Ocorreu um erro ao processar o cancelamento." });
+  }
 });
 
 app.use(express.json());

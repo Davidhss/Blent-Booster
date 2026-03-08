@@ -73,7 +73,8 @@ export const Blent_PLANS: Plan[] = [
             'Suporte prioritário',
             'Organizador de Tarefas (Planner)',
         ],
-        stripeLink: 'https://buy.stripe.com/9B6fZh3ns83Og4W5p65sA05', // Placeholder, needs actual Stripe link
+        //stripeLink: 'https://buy.stripe.com/9B6fZh3ns83Og4W5p65sA05',
+        stripeLink: 'https://buy.stripe.com/test_3cI9AS31N2GJglx4jGfEk00', // Placeholder, needs actual Stripe link
     },
     {
         id: 'quarterly',

@@ -75,7 +75,9 @@ export interface UserProfile {
   subscription_status?: 'active' | 'inactive' | 'trialing' | 'past_due' | 'canceled';
   subscription_plan?: 'monthly' | 'quarterly' | 'annual';
   stripe_customer_id?: string;
+  stripe_subscription_id?: string;
   last_payment_date?: string;
+  subscription_end_date?: string;
   created_at?: string;
   token_balance?: number;
   is_unlimited?: boolean;
