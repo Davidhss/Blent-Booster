@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "server": "tsx server.ts",
+    "start": "node --loader tsx/esm server.ts",
     "dev:all": "start cmd /c \"npm run server\" && npm run dev",
     "build": "vite build",
+    "build:prod": "vite build && echo Build complete",
     "preview": "vite preview",
     "clean": "node -e \"require('fs').rmSync('dist', {recursive:true,force:true})\"",
     "lint": "tsc --noEmit",

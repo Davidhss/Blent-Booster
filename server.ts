@@ -4,6 +4,8 @@ import nodemailer from "nodemailer";
 import Stripe from "stripe";
 import bodyParser from "body-parser";
 import { createClient } from "@supabase/supabase-js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
@@ -30,7 +32,7 @@ const supabaseAdmin = createClient(
 );
 
 const app = express();
-const PORT = parseInt(process.env.API_PORT || '3001', 10);
+const PORT = parseInt(process.env.PORT || process.env.API_PORT || '3001', 10);
 
 // =============================================
 // SECURITY MIDDLEWARE
@@ -1254,6 +1256,25 @@ app.post("/api/lead", async (req, res) => {
   }
 });
 
+// =============================================
+// SERVE FRONTEND STATIC FILES (for Hostinger / production)
+// =============================================
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, 'dist');
+
+// Serve React build in production
+app.use(express.static(distPath));
+
+// Catch-all: serve index.html for any non-API route (SPA routing)
+app.get('*', (req, res) => {
+  // Don't catch /api routes — those should 404 if not matched
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
 app.listen(PORT, () => {
-  console.log(`API server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
