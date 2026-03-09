@@ -35,9 +35,18 @@ const app = express();
 const PORT = parseInt(process.env.PORT || process.env.API_PORT || '3001', 10);
 
 // =============================================
-// SECURITY MIDDLEWARE
+// GLOBAL MIDDLEWARE & SECURITY
 // =============================================
 app.use(helmet());
+app.use(express.json()); // Essential: must be before routes
+
+// Request Logger for debugging
+app.use((req, _res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  }
+  next();
+});
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -420,9 +429,7 @@ app.post("/api/user/cancel-subscription", authenticateUser, async (req: any, res
   }
 });
 
-app.use(express.json());
-
-// =============================================
+// Body parser moved to top
 // TOKEN CONSUMPTION
 // =============================================
 const consumeTokensSchema = z.object({
