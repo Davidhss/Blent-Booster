@@ -182,8 +182,14 @@ serve(async (req) => {
                         console.log(`  Subscription activated for user ${userId}. Plan: ${planType}. Tokens set to: ${tokens}`);
 
                         try {
-                            const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
-                            if (user && user.email) {
+                            // Fetch user email specifically from profiles if we don't have it locally
+                            let finalUserEmail = userEmail;
+                            if (!finalUserEmail) {
+                                const { data: pData } = await supabaseAdmin.from('profiles').select('email').eq('id', userId).single();
+                                if (pData && pData.email) finalUserEmail = pData.email;
+                            }
+
+                            if (finalUserEmail) {
                                 const welcomeHtml = `
   <!DOCTYPE html>
   <html lang="pt-BR">
@@ -218,7 +224,7 @@ serve(async (req) => {
                               <div style="background-color: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 16px; padding: 24px; margin-bottom: 32px;">
                                   <h3 style="margin: 0 0 16px 0; color: #a78bfa; font-size: 18px;">🔐 Suas Credenciais de Acesso</h3>
                                   <p style="margin: 0 0 12px 0; color: rgba(255, 255, 255, 0.8);">Uma conta foi criada automaticamente para você. Use os dados abaixo para entrar:</p>
-                                  <p style="margin: 0 0 8px 0; color: #ffffff;"><strong>E-mail:</strong> ${userEmail}</p>
+                                  <p style="margin: 0 0 8px 0; color: #ffffff;"><strong>E-mail:</strong> ${finalUserEmail}</p>
                                   <p style="margin: 0 0 0 0; color: #ffffff;"><strong>Senha:</strong> ${generatedPassword}</p>
                                   <p style="margin: 12px 0 0 0; color: rgba(255, 255, 255, 0.5); font-size: 12px;">Recomendamos alterar sua senha após o primeiro acesso.</p>
                               </div>
@@ -258,7 +264,7 @@ serve(async (req) => {
       </table>
   </body>
   </html>`;
-                                await sendEmailViaSendGrid(user.email, "Bem-vindo(a) ao BlentBoost! 🎉", welcomeHtml);
+                                await sendEmailViaSendGrid(finalUserEmail, "Bem-vindo(a) ao BlentBoost! 🎉", welcomeHtml);
                             }
                         } catch (e) {
                             console.error("Failed to send welcome email:", e);
