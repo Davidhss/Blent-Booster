@@ -57,6 +57,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [isCanceling, setIsCanceling] = useState(false);
+  const [billingHistory, setBillingHistory] = useState<any[]>([]);
+  const [planDetails, setPlanDetails] = useState<any>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Memory Card Slots State
   const [activeAudienceSlot, setActiveAudienceSlot] = useState(0);
@@ -65,6 +68,34 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (activeTab === 'subscription' && profile?.subscription_status && profile?.subscription_status !== 'inactive') {
+      const fetchHistory = async () => {
+        setIsLoadingHistory(true);
+        try {
+          const { data, error } = await supabase.functions.invoke('stripe-subscription', {
+            body: { action: 'history' }
+          });
+          if (error) throw error;
+          if (data && data.history) {
+            setBillingHistory(data.history);
+          }
+          if (data && data.planDetails) {
+            setPlanDetails(data.planDetails);
+          }
+        } catch (err) {
+          console.error("Error fetching billing history", err);
+        } finally {
+          setIsLoadingHistory(false);
+        }
+      };
+      // Only fetch if we haven't fetched yet
+      if (billingHistory.length === 0) {
+        fetchHistory();
+      }
+    }
+  }, [activeTab, profile?.subscription_status]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -121,17 +152,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
     }
     setIsCanceling(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) throw new Error('Não autenticado');
-
-      const res = await fetch('/api/user/cancel-subscription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ reason: cancelReason }),
+      const { data, error } = await supabase.functions.invoke('stripe-subscription', {
+        body: { action: 'cancel', reason: cancelReason }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro desconhecido');
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
       toast.success(data.message || 'Assinatura cancelada com sucesso.');
       setShowCancelModal(false);
@@ -671,8 +696,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
                       </div>
                       <div className="flex-1">
                         <p className="text-[10px] font-black uppercase tracking-widest text-violet-300/70 mb-0.5">Plano Atual</p>
-                        <h2 className="text-xl font-black text-white capitalize">
+                        <h2 className="text-xl font-black text-white capitalize flex items-center gap-3">
                           {profile?.subscription_plan === 'monthly' ? 'Mensal' : profile?.subscription_plan === 'quarterly' ? 'Trimestral' : profile?.subscription_plan === 'annual' ? 'Anual' : (profile?.subscription_plan || 'Assinatura')}
+                          {planDetails && (
+                            <span className="text-sm font-bold text-violet-300 bg-black/20 px-2 py-1 rounded-lg">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: planDetails.currency }).format(planDetails.amount)}
+                              <span className="text-[10px] text-violet-300/50 font-medium ml-1 uppercase">/{planDetails.interval === 'month' ? 'mês' : planDetails.interval === 'year' ? 'ano' : planDetails.interval}</span>
+                            </span>
+                          )}
                         </h2>
                       </div>
                       {/* Status badge */}
@@ -743,6 +774,45 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
                         </p>
                       </div>
                     </div>
+
+                    {/* Billing History Section */}
+                    {isLoadingHistory ? (
+                      <div className="border-t border-slate-200 dark:border-white/[0.06] p-6 flex justify-center">
+                        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                      </div>
+                    ) : billingHistory.length > 0 && (
+                      <div className="border-t border-slate-200 dark:border-white/[0.06] p-6">
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-violet-400" />
+                          Histórico de Pagamentos
+                        </h3>
+                        <div className="space-y-3">
+                          {billingHistory.map((invoice) => (
+                            <div key={invoice.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.05] gap-3">
+                              <div className="space-y-1">
+                                <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                  {invoice.description}
+                                  {invoice.status === 'paid' && <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] uppercase font-bold">Pago</span>}
+                                </p>
+                                <p className="text-xs font-medium text-slate-500 dark:text-white/40">
+                                  {new Date(invoice.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                </p>
+                              </div>
+                              <div className="text-left sm:text-right flex flex-col sm:items-end gap-1">
+                                <p className="text-sm font-black text-slate-900 dark:text-white">
+                                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: invoice.currency }).format(invoice.amount)}
+                                </p>
+                                {invoice.invoice_url && (
+                                  <a href={invoice.invoice_url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold text-violet-500 hover:text-violet-400 flex items-center gap-1 transition-colors">
+                                    Acessar Recibo <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Cancel section — very discrete */}
