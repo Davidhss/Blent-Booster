@@ -38,63 +38,6 @@ const PORT = parseInt(process.env.PORT || process.env.API_PORT || '3001', 10);
 // GLOBAL MIDDLEWARE & SECURITY
 // =============================================
 app.use(helmet());
-app.use(express.json()); // Essential: must be before routes
-
-// Request Logger for debugging
-app.use((req, _res, next) => {
-  if (req.path.startsWith('/api')) {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  }
-  next();
-});
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
-  message: { error: "Too many requests, please try again later." } as any
-});
-app.use("/api/", limiter);
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10, // Strict limit for auth/signup
-  message: { error: "Too many signup attempts, please try again later." } as any
-});
-app.use("/api/auth/signup", authLimiter);
-
-// Custom Authentication Middleware
-const authenticateUser = async (req: any, res: any, next: any) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ error: "Unauthorized: Missing or invalid token" });
-  }
-
-  const token = authHeader.split(" ")[1];
-  try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !user) {
-      return res.status(401).json({ error: "Unauthorized: Invalid token" });
-    }
-    req.user = user;
-    next();
-  } catch (err) {
-    return res.status(500).json({ error: "Internal server error during authentication" });
-  }
-};
-
-// CORS restricted to app URL, but allow any localhost port in development
-const allowedOrigin = process.env.VITE_APP_URL || "http://localhost:3000";
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  const isLocalhost = origin && /^http:\/\/localhost(:\d+)?$/.test(origin);
-  if (origin === allowedOrigin || isLocalhost || !origin) {
-    res.header("Access-Control-Allow-Origin", origin || allowedOrigin);
-  }
-  res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (req.method === "OPTIONS") { res.status(200).end(); return; }
-  next();
-});
 
 // PLAN TOKEN ALLOCATIONS
 const PLAN_TOKENS: Record<string, number> = {
@@ -155,7 +98,7 @@ const sendEmailViaSendGrid = async (toEmail: string, subject: string, htmlConten
 };
 
 // =============================================
-// STRIPE WEBHOOK   must be before express.json()
+// STRIPE WEBHOOK — MUST be before express.json() to receive raw body
 // =============================================
 app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -207,7 +150,6 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
             } else if (newUser.user) {
               userId = newUser.user.id;
               isNewUser = true;
-              // Ensure profile exists in case db trigger failed or is delayed
               await supabaseAdmin.from('profiles').upsert({
                 id: userId,
                 email: userEmail,
@@ -229,7 +171,6 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
         const planType = session.metadata?.plan_type || 'monthly';
         const tokens = PLAN_TOKENS[planType] || 1000;
 
-        // Fetch subscription details from Stripe to get period end date
         let subscriptionEndDate: string | null = null;
         let stripeSubscriptionId: string | null = session.subscription as string | null;
         if (stripeSubscriptionId) {
@@ -257,7 +198,6 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
         if (error) {
           console.error('Supabase update error (subscription):', error);
         } else {
-          // Log transaction
           await supabaseAdmin.from('token_transactions').insert({
             user_id: userId,
             amount: tokens,
@@ -266,7 +206,6 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
           });
           console.log(`  Subscription activated for user ${userId}. Plan: ${planType}. Tokens set to: ${tokens}`);
 
-          // Fetch user email to send welcome message
           try {
             const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
             if (user && user.email) {
@@ -357,7 +296,6 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
         const packType = session.metadata?.pack_type || 'starter';
         const tokens = PACK_TOKENS[packType] || 500;
 
-        // Get current balance first
         const { data: profileData } = await supabaseAdmin
           .from('profiles')
           .select('token_balance')
@@ -396,7 +334,7 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
         .update({ subscription_status: 'canceled' })
         .eq('stripe_customer_id', customerId);
 
-      console.log(`   Subscription canceled for customer: ${customerId}`);
+      console.log(`   Subscription canceled for customer: ${customerId}`);
       break;
     }
 
@@ -427,6 +365,65 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
 
   res.json({ received: true });
 });
+
+app.use(express.json()); // AFTER webhook route — must not parse webhook body
+
+// Request Logger for debugging
+app.use((req, _res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  }
+  next();
+});
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: { error: "Too many requests, please try again later." } as any
+});
+app.use("/api/", limiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // Strict limit for auth/signup
+  message: { error: "Too many signup attempts, please try again later." } as any
+});
+app.use("/api/auth/signup", authLimiter);
+
+// Custom Authentication Middleware
+const authenticateUser = async (req: any, res: any, next: any) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Unauthorized: Missing or invalid token" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(500).json({ error: "Internal server error during authentication" });
+  }
+};
+
+// CORS restricted to app URL, but allow any localhost port in development
+const allowedOrigin = process.env.VITE_APP_URL || "http://localhost:3000";
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const isLocalhost = origin && /^http:\/\/localhost(:\d+)?$/.test(origin);
+  if (origin === allowedOrigin || isLocalhost || !origin) {
+    res.header("Access-Control-Allow-Origin", origin || allowedOrigin);
+  }
+  res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") { res.status(200).end(); return; }
+  next();
+});
+
 
 
 // =============================================
