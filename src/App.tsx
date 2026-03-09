@@ -430,24 +430,20 @@ function MainApp() {
         }
       }
 
-      const API_URL = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${API_URL}/api/report-bug`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseKey}`,
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('report-bug', {
+        body: {
           tool: bugTool,
           description: finalDesc,
           userEmail: user?.email || 'Usuário Deslogado'
-        })
+        }
       });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error('Bug report error:', response.status, errText);
-        throw new Error(`Status ${response.status}`);
+      if (error) {
+        console.error('Bug report error:', error);
+        throw new Error(`Status ${error.message}`);
+      }
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       setShowBugReport(false);

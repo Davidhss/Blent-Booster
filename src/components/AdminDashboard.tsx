@@ -151,15 +151,12 @@ export const AdminDashboard: React.FC = () => {
   const fetchBugs = async () => {
     setLoadingBugs(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: any = {};
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-      const res = await fetch(`${API_URL}/api/admin/bug-reports`, { headers });
-      if (!res.ok) throw new Error('Falha ao obter bugs');
-      const data = await res.json();
-      setBugs(data.bugs || []);
+      const { data, error } = await supabase.functions.invoke('report-bug', {
+        body: { action: 'get_all' }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setBugs(data?.bugs || []);
     } catch (err: any) {
       toast.error('Erro ao carregar relatórios de bugs.');
       console.error(err);
@@ -172,15 +169,11 @@ export const AdminDashboard: React.FC = () => {
     e.stopPropagation(); // Prevenir abrir o modal
     setResolvingBug(id);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: any = {};
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-
-      const res = await fetch(`${API_URL}/api/admin/bug-reports/${id}/resolve`, {
-        method: 'POST',
-        headers
+      const { data, error } = await supabase.functions.invoke('report-bug', {
+        body: { action: 'resolve', bugId: id }
       });
-      if (!res.ok) throw new Error('Falha ao resolver bug');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast.success('Bug marcado como resolvido!');
       setBugs(prev => prev.map(b => b.id === id ? { ...b, status: 'resolved' } : b));
       if (viewingBug?.id === id) setViewingBug({ ...viewingBug, status: 'resolved' });
@@ -195,16 +188,11 @@ export const AdminDashboard: React.FC = () => {
     if (e) e.stopPropagation();
     setEmailingBug(id);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers: any = {};
-      if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`;
-
-      const res = await fetch(`${API_URL}/api/admin/bug-reports/${id}/thank-you`, {
-        method: 'POST',
-        headers
+      const { data, error } = await supabase.functions.invoke('report-bug', {
+        body: { action: 'thank-you', bugId: id }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Falha ao enviar e-mail');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
       toast.success('E-mail de agradecimento enviado!');
     } catch (err: any) {
       toast.error(err.message || 'Erro ao enviar e-mail.');
