@@ -175,10 +175,55 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.client_reference_id;
+      let userId = session.client_reference_id;
       const purchaseType = session.metadata?.purchase_type || 'subscription';
 
-      if (!userId) break;
+      let generatedPassword = null;
+      let isNewUser = false;
+      let userEmail = session.customer_details?.email || session.customer_email || undefined;
+      let userName = session.customer_details?.name || 'Booster';
+
+      if (!userId && userEmail) {
+        try {
+          const { data: existingProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('email', userEmail)
+            .single();
+
+          if (existingProfile) {
+            userId = existingProfile.id;
+          } else {
+            generatedPassword = "Bb" + Math.floor(1000 + Math.random() * 9000) + Math.random().toString(36).slice(-4) + "!";
+            const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+              email: userEmail,
+              password: generatedPassword,
+              email_confirm: true,
+              user_metadata: { name: userName }
+            });
+
+            if (createError) {
+              console.error("Erro ao auto-criar conta via webhook:", createError);
+            } else if (newUser.user) {
+              userId = newUser.user.id;
+              isNewUser = true;
+              // Ensure profile exists in case db trigger failed or is delayed
+              await supabaseAdmin.from('profiles').upsert({
+                id: userId,
+                email: userEmail,
+                name: userName
+              }, { onConflict: 'id' });
+            }
+          }
+        } catch (e) {
+          console.error("Erro consultando perfis no webhook:", e);
+        }
+      }
+
+      if (!userId) {
+        console.warn("Webhook aborted: No userId could be resolved or created for session.");
+        break;
+      }
 
       if (purchaseType === 'subscription') {
         const planType = session.metadata?.plan_type || 'monthly';
@@ -256,6 +301,17 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
                             <p style="margin: 0 0 24px 0; color: rgba(255, 255, 255, 0.7); font-size: 16px; line-height: 1.6;">
                                 Olá! Seu pagamento do plano <strong style="color: #ffffff; text-transform: uppercase;">${planType}</strong> foi confirmado! A sua conta já foi atualizada e liberada com sucesso.
                             </p>
+                            
+                            ${isNewUser && generatedPassword ? `
+                            <div style="background-color: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 16px; padding: 24px; margin-bottom: 32px;">
+                                <h3 style="margin: 0 0 16px 0; color: #a78bfa; font-size: 18px;">🔐 Suas Credenciais de Acesso</h3>
+                                <p style="margin: 0 0 12px 0; color: rgba(255, 255, 255, 0.8);">Uma conta foi criada automaticamente para você. Use os dados abaixo para entrar:</p>
+                                <p style="margin: 0 0 8px 0; color: #ffffff;"><strong>E-mail:</strong> ${userEmail}</p>
+                                <p style="margin: 0 0 0 0; color: #ffffff;"><strong>Senha:</strong> ${generatedPassword}</p>
+                                <p style="margin: 12px 0 0 0; color: rgba(255, 255, 255, 0.5); font-size: 12px;">Recomendamos alterar sua senha após o primeiro acesso.</p>
+                            </div>
+                            ` : ''}
+
                             <p style="margin: 0 0 32px 0; color: rgba(255, 255, 255, 0.7); font-size: 16px; line-height: 1.6;">
                                 Prepare-se para criar conteúdos magnéticos e dominar o algoritmo. Aqui estão os seus próximos passos para extrair o máximo do BlentBoost:
                             </p>
@@ -263,7 +319,7 @@ app.post("/api/webhook/stripe", express.raw({ type: 'application/json' }), async
                             <div style="background-color: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 24px; margin-bottom: 32px;">
                                 <h3 style="margin: 0 0 16px 0; color: #ffffff; font-size: 18px;">🛠️ Primeiros Passos:</h3>
                                 <ul style="margin: 0; padding-left: 20px; color: rgba(255,255,255,0.7); line-height: 1.6;">
-                                    <li style="margin-bottom: 12px;">Acesse a plataforma e conecte sua conta do Instagram.</li>
+                                    <li style="margin-bottom: 12px;">Acesse a plataforma com seus dados de login.</li>
                                     <li style="margin-bottom: 12px;">Preencha seu perfil para que a IA entenda seu tom de voz e estilo.</li>
                                     <li>Gere seu primeiro post viral em segundos!</li>
                                 </ul>
@@ -1275,11 +1331,22 @@ app.use(express.static(distPath));
 
 // Catch-all: serve index.html for any non-API route (SPA routing)
 app.get('*', (req, res) => {
-  // Don't catch /api routes — those should 404 if not matched
   if (req.path.startsWith('/api')) {
-    return res.status(404).json({ error: 'API route not found' });
+    return res.status(404).json({ error: 'API GET route not found', path: req.path });
   }
   res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// Explicit diagnostic catch-all for any unhandled API requests (POST, PUT, DELETE, etc.)
+app.all('/api/*', (req, res) => {
+  console.warn(`[404] Unhandled API request: ${req.method} ${req.path}`);
+  return res.status(404).json({
+    error: 'API route not found',
+    method: req.method,
+    path: req.path,
+    headers: req.headers,
+    originalUrl: req.originalUrl
+  });
 });
 
 app.listen(PORT, () => {

@@ -8,4 +8,7 @@ RewriteCond %{REQUEST_FILENAME} !-d
 # Pass all requests to the entry point (Hostinger handles the proxying to Node)
 # If Hostinger's Node.js tool is used, sometimes this file is handled 
 # automatically, but adding it ensures the /api routes work correctly.
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
 RewriteRule ^(.*)$ entry.js [L]
