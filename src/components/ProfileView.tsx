@@ -196,8 +196,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
       if (!user) return;
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -679,19 +679,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
                       <div className={cn(
                         "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5",
                         profile?.subscription_status === 'active' ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" :
-                        profile?.subscription_status === 'trialing' ? "bg-blue-500/15 text-blue-400 border border-blue-500/20" :
-                        profile?.subscription_status === 'past_due' ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" :
-                        profile?.subscription_status === 'canceled' ? "bg-red-500/15 text-red-400 border border-red-500/20" :
-                        "bg-slate-500/15 text-slate-400 border border-slate-500/20"
+                          profile?.subscription_status === 'trialing' ? "bg-blue-500/15 text-blue-400 border border-blue-500/20" :
+                            profile?.subscription_status === 'past_due' ? "bg-amber-500/15 text-amber-400 border border-amber-500/20" :
+                              profile?.subscription_status === 'canceled' ? "bg-red-500/15 text-red-400 border border-red-500/20" :
+                                "bg-slate-500/15 text-slate-400 border border-slate-500/20"
                       )}>
                         {profile?.subscription_status === 'active' && <CheckCircle className="w-3 h-3" />}
                         {profile?.subscription_status === 'trialing' && <ClockIcon className="w-3 h-3" />}
                         {profile?.subscription_status === 'past_due' && <AlertCircle className="w-3 h-3" />}
                         {profile?.subscription_status === 'canceled' && <XCircle className="w-3 h-3" />}
                         {profile?.subscription_status === 'active' ? 'Ativo' :
-                         profile?.subscription_status === 'trialing' ? 'Em teste' :
-                         profile?.subscription_status === 'past_due' ? 'Pagamento atrasado' :
-                         profile?.subscription_status === 'canceled' ? 'Cancelado' : profile?.subscription_status}
+                          profile?.subscription_status === 'trialing' ? 'Em teste' :
+                            profile?.subscription_status === 'past_due' ? 'Pagamento atrasado' :
+                              profile?.subscription_status === 'canceled' ? 'Cancelado' : profile?.subscription_status}
                       </div>
                     </div>
 

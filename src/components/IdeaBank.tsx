@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lightbulb, Plus, Zap, Loader2, Trash2, X, Palette, Check, Maximize2, CheckCircle2, History, Clock, Save, AlertCircle, CalendarDays, Folder, FolderOpen, FolderPlus, SquareCheck, GripVertical, MoreHorizontal, Pencil } from 'lucide-react';
+import { Lightbulb, Plus, Zap, Loader2, Trash2, X, Palette, Check, Maximize2, CheckCircle2, History, Clock, Save, AlertCircle, CalendarDays, Folder, FolderOpen, FolderPlus, SquareCheck, GripVertical, MoreHorizontal, Pencil, ChevronRight, ChevronDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { optimizeIdea } from '../services/gemini';
@@ -138,8 +138,10 @@ export const IdeaBank: React.FC = () => {
     // Folder states
     const [folders, setFolders] = useState<IdeaFolder[]>([]);
     const [selectedFolderId, setSelectedFolderId] = useState<number | null | 'all'>('all');
+    const [expandedFolders, setExpandedFolders] = useState<Set<number>>(new Set());
     const [showFolderMenu, setShowFolderMenu] = useState(false);
     const [showNewFolderInput, setShowNewFolderInput] = useState(false);
+    const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [editingFolder, setEditingFolder] = useState<IdeaFolder | null>(null);
 
@@ -317,6 +319,16 @@ export const IdeaBank: React.FC = () => {
             item.id === itemId ? { ...item, text } : item
         );
         handleUpdateIdeaContent(idea.id, { ...idea.content, checklist });
+    };
+
+    const toggleFolder = (folderId: number, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        setExpandedFolders(prev => {
+            const next = new Set(prev);
+            if (next.has(folderId)) next.delete(folderId);
+            else next.add(folderId);
+            return next;
+        });
     };
 
     const handleMoveFolder = async (folderId: number, parentId: number | null) => {
@@ -547,46 +559,102 @@ export const IdeaBank: React.FC = () => {
 
     const renderFolderTree = (parentId: number | null = null, depth = 0) => {
         const childFolders = folders.filter(f => f.parent_id === parentId);
-        if (childFolders.length === 0) return null;
+        if (childFolders.length === 0 && parentId === null) return (
+            <div className="py-8 text-center opacity-20">
+                <Folder className="w-8 h-8 mx-auto mb-2" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Nenhuma pasta</p>
+            </div>
+        );
+
         return (
             <div className={cn("flex flex-col gap-1", depth > 0 && "ml-3 pl-3 border-l border-slate-200 dark:border-white/10")}>
-                {childFolders.map(folder => (
-                    <DroppableFolderWrapper key={folder.id} id={folder.id} isDraggable>
-                        <div className="flex items-center gap-1 group/folder">
-                            {editingFolder?.id === folder.id ? (
-                                <input
-                                    autoFocus
-                                    defaultValue={folder.name}
-                                    onBlur={e => handleRenameFolder(folder, e.target.value)}
-                                    onKeyDown={e => { if (e.key === 'Enter') handleRenameFolder(folder, e.currentTarget.value); if (e.key === 'Escape') setEditingFolder(null); }}
-                                    className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest bg-white dark:bg-white/10 border border-violet-500/50 rounded-lg outline-none text-slate-900 dark:text-white w-full"
-                                />
-                            ) : (
-                                <button
-                                    onClick={() => setSelectedFolderId(folder.id)}
-                                    className={cn(
-                                        "flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all text-left",
-                                        selectedFolderId === folder.id
-                                            ? "bg-violet-600 text-white shadow-lg shadow-violet-500/20"
-                                            : "bg-transparent text-slate-500 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-white/70"
+                {childFolders.map(folder => {
+                    const isExpanded = expandedFolders.has(folder.id);
+                    const folderIdeas = ideas.filter(i => i.folder_id === folder.id);
+
+                    return (
+                        <div key={folder.id} className="flex flex-col gap-1">
+                            <DroppableFolderWrapper id={folder.id} isDraggable>
+                                <div className="flex items-center gap-1 group/folder">
+                                    {editingFolder?.id === folder.id ? (
+                                        <input
+                                            autoFocus
+                                            defaultValue={folder.name}
+                                            onBlur={e => handleRenameFolder(folder, e.target.value)}
+                                            onKeyDown={e => { if (e.key === 'Enter') handleRenameFolder(folder, e.currentTarget.value); if (e.key === 'Escape') setEditingFolder(null); }}
+                                            className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest bg-white dark:bg-white/10 border border-violet-500/50 rounded-lg outline-none text-slate-900 dark:text-white w-full"
+                                        />
+                                    ) : (
+                                        <div className={cn(
+                                            "flex-1 flex items-center gap-2 px-1 py-1 rounded-lg transition-all text-left group/btn",
+                                            selectedFolderId === folder.id
+                                                ? "bg-violet-600/10 text-violet-600 dark:text-violet-400"
+                                                : "bg-transparent text-slate-500 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-800 dark:hover:text-white/70"
+                                        )}>
+                                            <button
+                                                onClick={(e) => toggleFolder(folder.id, e)}
+                                                className="p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded transition-colors"
+                                            >
+                                                {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedFolderId(folder.id);
+                                                    setShowMobileSidebar(false);
+                                                }}
+                                                className="flex-1 flex items-center gap-2 py-1 text-[10px] font-black uppercase tracking-widest truncate"
+                                            >
+                                                <Folder className={cn("w-3.5 h-3.5", selectedFolderId === folder.id ? "fill-current" : "")} />
+                                                <span className="truncate">{folder.name}</span>
+                                            </button>
+                                        </div>
                                     )}
-                                >
-                                    <Folder className="w-4 h-4" />
-                                    <span className="truncate">{folder.name}</span>
-                                </button>
-                            )}
-                            <div className="opacity-0 group-hover/folder:opacity-100 transition-opacity flex items-center gap-0.5 pr-1">
-                                <button onClick={() => setEditingFolder(folder)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">
-                                    <Pencil className="w-3 h-3" />
-                                </button>
-                                <button onClick={() => handleDeleteFolder(folder.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
-                                    <X className="w-3 h-3" />
-                                </button>
-                            </div>
+                                    <div className="opacity-0 group-hover/folder:opacity-100 transition-opacity flex items-center gap-0.5 pr-1">
+                                        <button onClick={() => setEditingFolder(folder)} className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors">
+                                            <Pencil className="w-3 h-3" />
+                                        </button>
+                                        <button onClick={() => handleDeleteFolder(folder.id)} className="p-1 text-slate-400 hover:text-red-500 transition-colors">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </DroppableFolderWrapper>
+
+                            {/* Files inside folder */}
+                            <AnimatePresence>
+                                {isExpanded && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden flex flex-col gap-0.5 ml-4 pl-3 border-l border-slate-200 dark:border-white/5 mb-1"
+                                    >
+                                        {folderIdeas.length === 0 ? (
+                                            <span className="text-[9px] font-bold text-slate-400 dark:text-white/20 py-1 italic">Pasta vazia</span>
+                                        ) : (
+                                            folderIdeas.map(idea => (
+                                                <button
+                                                    key={idea.id}
+                                                    onClick={() => {
+                                                        setSelectedIdea(idea);
+                                                        setShowMobileSidebar(false);
+                                                    }}
+                                                    className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-white/5 text-left group/file transition-colors"
+                                                >
+                                                    <div className={cn("w-1.5 h-1.5 rounded-full", getNoteStyle(idea.content.color).dot)} />
+                                                    <span className="text-[10px] font-semibold text-slate-500 dark:text-white/50 group-hover/file:text-slate-800 dark:group-hover/file:text-white truncate">
+                                                        {idea.content.title || idea.content.note?.substring(0, 20) || 'Ideia sem título'}
+                                                    </span>
+                                                </button>
+                                            ))
+                                        )}
+                                        {renderFolderTree(folder.id, depth + 1)}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
-                        {renderFolderTree(folder.id, depth + 1)}
-                    </DroppableFolderWrapper>
-                ))}
+                    );
+                })}
             </div>
         );
     };
@@ -597,14 +665,22 @@ export const IdeaBank: React.FC = () => {
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-violet-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
                 {/* Folder Sidebar */}
-                <aside className="w-64 flex-shrink-0 border-r border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-[#0d0d12]/60 backdrop-blur-xl flex flex-col z-40">
+                <aside className={cn(
+                    "w-64 flex-shrink-0 border-r border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-[#0d0d12]/60 backdrop-blur-xl flex flex-col z-40 transition-transform duration-300 md:translate-x-0",
+                    showMobileSidebar ? "translate-x-0 fixed inset-y-0 left-0" : "-translate-x-full fixed inset-y-0 left-0 md:relative"
+                )}>
                     <div className="p-4 border-b border-slate-200 dark:border-white/[0.06] flex items-center justify-between">
                         <h2 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                             <FolderOpen className="w-4 h-4" /> Pastas
                         </h2>
-                        <button onClick={() => setShowNewFolderInput(true)} className="p-1 rounded bg-yellow-500 text-black shadow hover:scale-105 transition-transform">
-                            <Plus className="w-3 h-3" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setShowNewFolderInput(true)} className="p-1 rounded bg-yellow-500 text-black shadow hover:scale-105 transition-transform">
+                                <Plus className="w-3 h-3" />
+                            </button>
+                            <button onClick={() => setShowMobileSidebar(false)} className="p-1 rounded bg-slate-200 dark:bg-white/10 text-slate-500 md:hidden">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                         {showNewFolderInput && (
@@ -629,7 +705,10 @@ export const IdeaBank: React.FC = () => {
                         <div className="space-y-4">
                             <DroppableFolderWrapper id="all">
                                 <button
-                                    onClick={() => setSelectedFolderId('all')}
+                                    onClick={() => {
+                                        setSelectedFolderId('all');
+                                        setShowMobileSidebar(false);
+                                    }}
                                     className={cn(
                                         "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
                                         selectedFolderId === 'all'
@@ -651,7 +730,13 @@ export const IdeaBank: React.FC = () => {
                 <div className="flex-1 flex flex-col min-w-0 z-30 relative">
                     <header className="border-b border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-[#0d0d12]/60 backdrop-blur-xl sticky top-0">
                         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-                            <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setShowMobileSidebar(true)}
+                                    className="p-2 -ml-2 rounded-lg bg-slate-100 dark:bg-white/5 md:hidden"
+                                >
+                                    <FolderOpen className="w-5 h-5 text-slate-500 dark:text-white" />
+                                </button>
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-500/10">
                                         <Lightbulb className="text-slate-900 dark:text-white w-5 h-5" />
@@ -868,7 +953,20 @@ export const IdeaBank: React.FC = () => {
                                         <div className={cn("flex-1 p-6 md:p-12 overflow-y-auto custom-scrollbar transition-colors duration-500", getNoteStyle(selectedIdea.content.color).bg)}>
                                             <div className="max-w-2xl mx-auto h-full flex flex-col">
                                                 <div className="flex items-center justify-between mb-8">
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/40">Modo Foco</span>
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-black/40">Modo Foco</span>
+                                                        <div className="h-4 w-px bg-black/10" />
+                                                        <select
+                                                            value={selectedIdea.folder_id || 'all'}
+                                                            onChange={(e) => handleMoveIdeaToFolder(selectedIdea.id, e.target.value === 'all' ? null : Number(e.target.value))}
+                                                            className="bg-black/5 border-none rounded-lg px-3 py-1 text-[9px] font-black uppercase tracking-widest outline-none focus:ring-0 cursor-pointer hover:bg-black/10 transition-colors"
+                                                        >
+                                                            <option value="all">Sem Pasta</option>
+                                                            {folders.map(f => (
+                                                                <option key={f.id} value={f.id}>{f.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
                                                     <button onClick={() => setSelectedIdea(null)} className="p-2 rounded-full hover:bg-black/10 transition-colors md:hidden">
                                                         <X className="w-5 h-5" />
                                                     </button>
@@ -1206,8 +1304,8 @@ export const IdeaBank: React.FC = () => {
                     border-radius: 10px;
                 }
             `}</style>
-                </div>
-            </div>
+                </div >
+            </div >
 
             <DragOverlay>
                 {activeId && activeType === 'idea' ? (
