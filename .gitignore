@@ -12,3 +12,4 @@ server_out.txt
 git-cred.sh
 push_err.txt
 push_output.txt
+server.mjs
