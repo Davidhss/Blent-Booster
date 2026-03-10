@@ -1804,7 +1804,7 @@ function AppContent() {
     }
     if (APP_VERSION === 'Blent') {
       return (
-        <LandingPage
+        <BlentLandingPage
           onGoToLogin={() => {
             setAuthMode('login');
             setShowAuth(true);

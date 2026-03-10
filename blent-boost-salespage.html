@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blent Boost — Conteúdo Profissional em Menos de 1 Minuto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060608;--bg2:#0a0a0f;--card:#0e0e14;--border:#1a1a28;
+  --accent:#D4FF57;--accent2:#57FFD4;--accent3:#FF57D4;
+  --text:#f0f0f0;--muted:#5a5a7a;--white:#fff;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:17px;line-height:1.65;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:0.4;mix-blend-mode:overlay}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(212,255,87,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(212,255,87,0.02) 1px,transparent 1px);background-size:80px 80px;pointer-events:none;z-index:0}
+.container{max-width:1080px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+.container--narrow{max-width:760px;margin:0 auto;padding:0 24px;position:relative;z-index:1}
+nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;background:rgba(6,6,8,0.75);backdrop-filter:blur(20px);border-bottom:1px solid rgba(212,255,87,0.07)}
+.nav-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;letter-spacing:-0.5px;color:var(--white)}
+.nav-logo span{color:var(--accent)}
+.nav-cta{background:var(--accent);color:#060608;font-family:'Syne',sans-serif;font-weight:700;font-size:13px;padding:10px 22px;border-radius:8px;text-decoration:none;letter-spacing:0.3px;transition:all 0.25s}
+.nav-cta:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(212,255,87,0.4)}
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 0 80px;position:relative;overflow:hidden}
+.orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(80px)}
+.orb1{width:700px;height:700px;background:radial-gradient(circle,rgba(212,255,87,0.11) 0%,transparent 70%);top:-200px;right:-150px;animation:orbf 8s ease-in-out infinite}
+.orb2{width:500px;height:500px;background:radial-gradient(circle,rgba(87,255,212,0.07) 0%,transparent 70%);bottom:-100px;left:-100px;animation:orbf 10s ease-in-out infinite reverse}
+@keyframes orbf{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.06)}}
+.particles{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.p{position:absolute;border-radius:50%;background:var(--accent);opacity:0;animation:pfly linear infinite}
+@keyframes pfly{0%{opacity:0;transform:translateY(100vh)}15%{opacity:0.7}85%{opacity:0.2}100%{opacity:0;transform:translateY(-5vh)}}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(212,255,87,0.06);border:1px solid rgba(212,255,87,0.18);color:var(--accent);font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;padding:8px 18px;border-radius:100px;margin-bottom:32px;width:fit-content;animation:fsu .7s ease both}
+.hero-badge::before{content:'●';font-size:7px;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+@keyframes fsu{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.hero h1{font-family:'Syne',sans-serif;font-size:clamp(44px,6.5vw,86px);font-weight:800;line-height:1.03;letter-spacing:-3px;color:var(--white);margin-bottom:28px;max-width:920px;animation:fsu .8s .1s ease both}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero h1 .dim{color:var(--muted)}
+.hero-sub{font-size:clamp(16px,2vw,19px);color:#8888aa;max-width:580px;margin-bottom:48px;font-weight:300;line-height:1.75;animation:fsu .8s .2s ease both}
+.hero-sub strong{color:var(--text);font-weight:500}
+.hero-cta-group{display:flex;align-items:center;gap:20px;flex-wrap:wrap;animation:fsu .8s .3s ease both}
+.btn-primary{background:var(--accent);color:#060608;font-family:'Syne',sans-serif;font-weight:700;font-size:16px;padding:18px 44px;border-radius:10px;text-decoration:none;border:none;cursor:pointer;transition:all .3s;display:inline-flex;align-items:center;gap:10px;letter-spacing:-.3px;position:relative;overflow:hidden}
+.btn-primary::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.2),transparent);opacity:0;transition:opacity .3s}
+.btn-primary:hover{transform:translateY(-3px);box-shadow:0 24px 64px rgba(212,255,87,.4)}
+.btn-primary:hover::after{opacity:1}
+.btn-primary .arr{transition:transform .25s}
+.btn-primary:hover .arr{transform:translateX(6px)}
+.hero-note{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.hero-note::before{content:'🔒';font-size:11px}
+.hero-stats{display:flex;gap:48px;margin-top:80px;padding-top:48px;border-top:1px solid rgba(255,255,255,.05);flex-wrap:wrap}
+.stat-num{font-family:'Syne',sans-serif;font-size:38px;font-weight:800;color:var(--white);line-height:1;margin-bottom:6px}
+.stat-num span{color:var(--accent)}
+.stat-label{font-size:13px;color:var(--muted)}
+.marquee-wrap{padding:36px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);overflow:hidden;background:rgba(212,255,87,.015)}
+.marquee-track{display:flex;gap:60px;animation:mq 22s linear infinite;width:max-content}
+.mi{font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:12px}
+.mi::before{content:'✦';color:var(--accent);font-size:9px}
+@keyframes mq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.section-label{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:20px;font-weight:600}
+.pain{padding:120px 0;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.pain h2{font-family:'Syne',sans-serif;font-size:clamp(30px,4vw,52px);font-weight:800;line-height:1.08;letter-spacing:-2px;color:var(--white);margin-bottom:20px}
+.pain h2 em{font-style:normal;color:var(--accent)}
+.pain-intro{font-size:18px;color:#7777aa;max-width:640px;margin-bottom:56px;font-weight:300}
+.pain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:var(--border)}
+.pain-card{background:var(--card);padding:40px 32px;position:relative;overflow:hidden;transition:background .3s}
+.pain-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);transform:scaleX(0);transition:transform .5s;transform-origin:left}
+.pain-card:hover{background:#0f0f18}
+.pain-card:hover::before{transform:scaleX(1)}
+.pain-icon{font-size:34px;margin-bottom:20px;display:block}
+.pain-card h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--white);margin-bottom:10px;letter-spacing:-.3px}
+.pain-card p{font-size:14px;color:var(--muted);line-height:1.65}
+.solution-intro{padding:120px 0;text-align:center;position:relative;overflow:hidden}
+.solution-intro::before{content:'';position:absolute;width:700px;height:700px;left:50%;top:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(212,255,87,.06),transparent 65%);pointer-events:none}
+.solution-intro h2{font-family:'Syne',sans-serif;font-size:clamp(36px,5vw,68px);font-weight:800;line-height:1.05;letter-spacing:-2.5px;color:var(--white);margin-bottom:24px}
+.solution-intro h2 em{font-style:normal;color:var(--accent)}
+.solution-intro p{font-size:19px;color:#7777aa;max-width:600px;margin:0 auto;font-weight:300}
+.features{padding:40px 0 120px}
+.feature-block{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center;padding:80px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.feature-block:last-child{border-bottom:none}
+.feature-block.rev{direction:rtl}
+.feature-block.rev>*{direction:ltr}
+.fnum{font-family:'Syne',sans-serif;font-size:80px;font-weight:800;color:rgba(212,255,87,.05);line-height:1;margin-bottom:-15px;letter-spacing:-5px}
+.ftag{display:inline-block;background:rgba(212,255,87,.07);color:var(--accent);border:1px solid rgba(212,255,87,.15);font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;padding:6px 14px;border-radius:100px;margin-bottom:20px}
+.feature-content h3{font-family:'Syne',sans-serif;font-size:clamp(24px,3vw,40px);font-weight:800;line-height:1.08;letter-spacing:-1.5px;color:var(--white);margin-bottom:16px}
+.feature-content p{font-size:16px;color:#7777aa;line-height:1.8;margin-bottom:28px;font-weight:300}
+.flist{list-style:none}
+.flist li{display:flex;align-items:flex-start;gap:12px;font-size:15px;color:#bbbbd4;margin-bottom:12px;line-height:1.5}
+.flist li::before{content:'→';color:var(--accent);font-weight:700;flex-shrink:0;margin-top:1px}
+.flist li.star{color:var(--accent);font-weight:500}
+.flist li.star::before{content:'★'}
+.fvis{background:var(--card);border:1px solid rgba(212,255,87,.07);border-radius:20px;padding:40px;min-height:380px;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;overflow:hidden;transition:border-color .3s}
+.fvis:hover{border-color:rgba(212,255,87,.2)}
+.fvis::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(212,255,87,.07),transparent 60%);pointer-events:none}
+.mock-header{width:100%;display:flex;align-items:center;gap:8px;margin-bottom:24px}
+.dot{width:11px;height:11px;border-radius:50%}
+.dot.r{background:#ff5f56}.dot.y{background:#ffbd2e}.dot.g{background:#27c93f}
+.mock-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%}
+.ms{aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;transition:transform .25s}
+.ms:hover{transform:scale(1.08)}
+.ms:nth-child(1){background:linear-gradient(135deg,#1a1a24,#2a2a3a);border:1px solid #333348}
+.ms:nth-child(2){background:linear-gradient(135deg,#0f1a14,#1a2e20);border:1px solid #2a4a30}
+.ms:nth-child(3){background:linear-gradient(135deg,#1a0f14,#2e1a1e);border:1px solid #4a2a30}
+.ms:nth-child(4){background:linear-gradient(135deg,#0f0f20,#1a1a32);border:1px solid #2a2a4a}
+.ms:nth-child(5){background:linear-gradient(135deg,#1c1410,#2e241a);border:1px solid #4a3820}
+.ms:nth-child(6){background:linear-gradient(135deg,#101418,#1a2028);border:1px solid #2a3040}
+.ms:nth-child(7){background:linear-gradient(135deg,#141220,#221a30);border:1px solid #362a48}
+.ms:nth-child(8){background:linear-gradient(135deg,#181520,#2a2230);border:1px solid #3a2e48}
+.mbadge{position:absolute;top:16px;right:16px;background:var(--accent);color:#060608;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px}
+.mtimer{font-family:'Syne',sans-serif;font-size:60px;font-weight:800;color:var(--accent);letter-spacing:-4px;margin-bottom:8px;text-shadow:0 0 50px rgba(212,255,87,.5)}
+.mtimer-lbl{font-size:13px;color:var(--muted);text-align:center}
+.mfolder{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:10px;margin-bottom:6px;font-size:13px;color:#9999bb;border:1px solid var(--border);transition:all .2s;width:100%}
+.mfolder.active{background:rgba(212,255,87,.07);border-color:rgba(212,255,87,.2);color:var(--accent)}
+.midea{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;margin-bottom:4px;font-size:12px;color:#7777a0;background:rgba(255,255,255,.02)}
+.cb{width:16px;height:16px;border-radius:4px;border:1px solid #444460;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px}
+.cb.done{background:var(--accent);border-color:var(--accent);color:#060608}
+.cal-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#cccce0}
+.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;width:100%}
+.cdl{text-align:center;font-size:10px;color:var(--muted);padding:4px 0}
+.cd{aspect-ratio:1;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#444460;background:rgba(255,255,255,.02)}
+.cd.has{background:rgba(212,255,87,.09);color:var(--accent);font-weight:600}
+.cd.today{background:var(--accent);color:#060608;font-family:'Syne',sans-serif;font-weight:800}
+.cd.dn{background:rgba(87,255,212,.08);color:var(--accent2)}
+.comparison{padding:120px 0;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.comparison h2{font-family:'Syne',sans-serif;font-size:clamp(30px,4vw,52px);font-weight:800;letter-spacing:-2px;color:var(--white);margin-bottom:16px;text-align:center}
+.comparison h2 em{font-style:normal;color:var(--accent)}
+.comparison-sub{text-align:center;color:#7777aa;font-size:17px;margin-bottom:60px;font-weight:300}
+.comp-wrap{overflow-x:auto}
+.comp-table{width:100%;border-collapse:collapse}
+.comp-table thead tr th{padding:16px 24px;font-family:'Syne',sans-serif;font-size:14px;font-weight:700;text-align:center;border-bottom:2px solid rgba(255,255,255,.06)}
+.comp-table thead tr th:first-child{text-align:left;color:var(--muted);font-weight:400;font-size:12px}
+.th-b{color:var(--accent)!important}
+.th-o{color:#333350!important}
+.comp-table tbody tr td{padding:16px 24px;font-size:14px;color:#7777a0;border-bottom:1px solid rgba(255,255,255,.03);text-align:center;transition:background .2s}
+.comp-table tbody tr td:first-child{text-align:left;color:#cccce0}
+.comp-table tbody tr:hover td{background:rgba(255,255,255,.015)}
+.cy{color:var(--accent);font-size:18px}
+.cn{color:#222238;font-size:18px}
+.cp{color:#444460;font-size:13px}
+.testimonials{padding:120px 0}
+.testimonials h2{font-family:'Syne',sans-serif;font-size:clamp(28px,3.5vw,46px);font-weight:800;letter-spacing:-1.5px;color:var(--white);margin-bottom:60px;text-align:center}
+.tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.tc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:36px;position:relative;overflow:hidden;transition:all .3s}
+.tc::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 0% 0%,rgba(212,255,87,.04),transparent 50%);pointer-events:none}
+.tc:hover{border-color:rgba(212,255,87,.18);transform:translateY(-4px);box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.tst{color:var(--accent);font-size:13px;margin-bottom:16px;letter-spacing:3px}
+.tt{font-size:15px;color:#bbbbd4;line-height:1.75;margin-bottom:24px;font-weight:300}
+.ta{display:flex;align-items:center;gap:12px}
+.tav{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#111124,#1a1a2e);display:flex;align-items:center;justify-content:center;font-size:18px;border:1px solid var(--border);flex-shrink:0}
+.tn{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--white)}
+.tr{font-size:12px;color:var(--muted)}
+.pricing{padding:120px 0;background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.pricing h2{font-family:'Syne',sans-serif;font-size:clamp(30px,4vw,52px);font-weight:800;letter-spacing:-2px;color:var(--white);text-align:center;margin-bottom:12px}
+.pricing h2 em{font-style:normal;color:var(--accent)}
+.pricing-sub{text-align:center;color:#7777aa;font-size:17px;margin-bottom:8px;font-weight:300}
+.pricing-note{text-align:center;font-size:13px;color:var(--muted);margin-bottom:0}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-width:940px;margin:60px auto 0;background:var(--border)}
+.pc{background:var(--card);padding:44px 36px;position:relative;overflow:hidden}
+.pc.ft{background:#09110a;border:1px solid rgba(212,255,87,.25);transform:scaleY(1.02);z-index:2;margin:-1px 0}
+.pc.ft::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent2),var(--accent),var(--accent2))}
+.pbadge{display:inline-block;background:var(--accent);color:#060608;font-family:'Syne',sans-serif;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:5px 12px;border-radius:100px;margin-bottom:20px}
+.pperiod{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px;font-weight:600}
+.pval{font-family:'Syne',sans-serif;font-size:52px;font-weight:800;color:var(--white);letter-spacing:-3px;line-height:1;margin-bottom:8px}
+.pval sup{font-size:22px;vertical-align:super;letter-spacing:0}
+.psave{font-size:12px;color:var(--accent);font-weight:500;margin-bottom:28px;min-height:20px}
+.pdiv{height:1px;background:rgba(255,255,255,.06);margin-bottom:28px}
+.pf{list-style:none;margin-bottom:36px}
+.pf li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#bbbbd4;margin-bottom:10px;line-height:1.5}
+.pf li::before{content:'✓';color:var(--accent);font-weight:700;flex-shrink:0}
+.pf li.ex{color:var(--accent);font-weight:500}
+.pf li.ex::before{content:'★'}
+.bp{display:block;width:100%;text-align:center;padding:16px;border-radius:10px;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;text-decoration:none;transition:all .25s;cursor:pointer;border:none;letter-spacing:.3px}
+.bp.pr{background:var(--accent);color:#060608}
+.bp.pr:hover{transform:translateY(-2px);box-shadow:0 16px 48px rgba(212,255,87,.3)}
+.bp.gh{background:transparent;color:#7777a0;border:1px solid var(--border)}
+.bp.gh:hover{border-color:rgba(212,255,87,.3);color:var(--accent)}
+.guarantee{padding:80px 0;text-align:center}
+.gbox{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:64px 48px;max-width:720px;margin:0 auto;position:relative;overflow:hidden;transition:border-color .3s}
+.gbox:hover{border-color:rgba(212,255,87,.2)}
+.gbox::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(212,255,87,.06),transparent 60%);pointer-events:none}
+.gicon{font-size:64px;margin-bottom:20px;display:block;filter:drop-shadow(0 0 30px rgba(212,255,87,.3))}
+.gbox h3{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;letter-spacing:-1px;color:var(--white);margin-bottom:16px}
+.gbox p{color:#7777a0;font-size:15px;line-height:1.8;font-weight:300}
+.gbox strong{color:var(--text);font-weight:500}
+.faq{padding:80px 0 120px}
+.faq h2{font-family:'Syne',sans-serif;font-size:clamp(28px,3.5vw,46px);font-weight:800;letter-spacing:-1.5px;color:var(--white);margin-bottom:48px}
+.fi{border-bottom:1px solid rgba(255,255,255,.05);padding:24px 0}
+.fq{display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:24px;user-select:none}
+.fq h4{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--white);letter-spacing:-.3px}
+.ftog{width:30px;height:30px;border-radius:50%;border:1px solid rgba(212,255,87,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--accent);font-size:20px;transition:all .3s}
+.fi.open .ftog{background:var(--accent);color:#060608;transform:rotate(45deg);border-color:var(--accent)}
+.fa{max-height:0;overflow:hidden;transition:max-height .4s ease;font-size:15px;color:#7777a0;line-height:1.8;font-weight:300}
+.fi.open .fa{max-height:300px;padding-top:16px}
+.final-cta{padding:140px 0;text-align:center;position:relative;overflow:hidden}
+.final-cta::before{content:'';position:absolute;width:900px;height:900px;border-radius:50%;background:radial-gradient(circle,rgba(212,255,87,.07),transparent 60%);top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none}
+.final-cta h2{font-family:'Syne',sans-serif;font-size:clamp(36px,5vw,72px);font-weight:800;line-height:1.03;letter-spacing:-2.5px;color:var(--white);margin-bottom:24px;max-width:820px;margin-left:auto;margin-right:auto}
+.final-cta h2 em{font-style:normal;color:var(--accent)}
+.final-cta p{font-size:18px;color:#7777aa;max-width:520px;margin:0 auto 48px;font-weight:300}
+.fgs{display:flex;justify-content:center;gap:32px;flex-wrap:wrap;margin-top:40px}
+.fg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+footer{padding:40px 0;border-top:1px solid rgba(255,255,255,.05)}
+.fi2{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.fl{font-family:'Syne',sans-serif;font-weight:800;font-size:17px;color:var(--white)}
+.fl span{color:var(--accent)}
+footer p{font-size:12px;color:var(--muted)}
+.reveal{opacity:0;transform:translateY(28px) scale(0.99);transition:opacity .75s cubic-bezier(.16,1,.3,1),transform .75s cubic-bezier(.16,1,.3,1)}
+.reveal.visible{opacity:1;transform:none}
+@media(max-width:768px){
+  .feature-block{grid-template-columns:1fr;gap:40px;direction:ltr!important}
+  .pgrid{grid-template-columns:1fr;max-width:420px}
+  .pc.ft{transform:none}
+  .hero-stats{gap:28px}
+  nav{padding:0 20px}
+  .gbox{padding:40px 24px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Blent <span>Boost</span></div>
+  <a href="#pricing" class="nav-cta">Começar agora →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="particles" id="particles"></div>
+  <div class="container">
+    <div class="hero-badge">Novo · Lançamento 2025</div>
+    <h1>
+      Conteúdo profissional
+      <em>em menos de 1 minuto.</em>
+      <span class="dim"> Sem Canva. Sem designer.</span>
+    </h1>
+    <p class="hero-sub">
+      O Blent Boost é o <strong>ecossistema completo</strong> para criadores e empreendedores que precisam de conteúdo <strong>bonito, rápido e consistente</strong> — do primeiro rascunho até o dia da publicação.
+    </p>
+    <div class="hero-cta-group">
+      <a href="#pricing" class="btn-primary">
+        Quero criar conteúdo agora <span class="arr">→</span>
+      </a>
+      <p class="hero-note">Acesso imediato. Cancele quando quiser.</p>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item reveal">
+        <div class="stat-num">10<span>×</span></div>
+        <div class="stat-label">mais rápido que o Canva</div>
+      </div>
+      <div class="stat-item reveal">
+        <div class="stat-num">8</div>
+        <div class="stat-label">estilos virais prontos</div>
+      </div>
+      <div class="stat-item reveal">
+        <div class="stat-num"><span>R$</span>49</div>
+        <div class="stat-label">para começar hoje</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-wrap">
+  <div class="marquee-track">
+    <div class="mi">Posts Cinematográficos</div>
+    <div class="mi">Banco de Ideias Inteligente</div>
+    <div class="mi">Planner Editorial Visual</div>
+    <div class="mi">IA Integrada</div>
+    <div class="mi">8 Estilos Premium</div>
+    <div class="mi">Zero Design Necessário</div>
+    <div class="mi">Conteúdo em 47 Segundos</div>
+    <div class="mi">Posts Cinematográficos</div>
+    <div class="mi">Banco de Ideias Inteligente</div>
+    <div class="mi">Planner Editorial Visual</div>
+    <div class="mi">IA Integrada</div>
+    <div class="mi">8 Estilos Premium</div>
+    <div class="mi">Zero Design Necessário</div>
+    <div class="mi">Conteúdo em 47 Segundos</div>
+  </div>
+</div>
+
+<!-- PAIN -->
+<section class="pain">
+  <div class="container">
+    <p class="section-label">O Problema Real</p>
+    <h2 class="reveal">Você não falta criatividade.<br>Você falta <em>sistema.</em></h2>
+    <p class="pain-intro reveal">Bons criadores perdem horas no processo — não nas ideias. Reconhece algum desses?</p>
+    <div class="pain-grid">
+      <div class="pain-card reveal">
+        <span class="pain-icon">⏱️</span>
+        <h3>2 horas para um carrossel simples</h3>
+        <p>Você entra no Canva para "fazer rápido" e 2 horas depois ainda está escolhendo fonte. O conteúdo nunca sai.</p>
+      </div>
+      <div class="pain-card reveal">
+        <span class="pain-icon">💸</span>
+        <h3>Posts que parecem "amadores"</h3>
+        <p>Mesmo com esforço, o resultado final ainda parece genérico. E isso queima sua autoridade — silenciosamente.</p>
+      </div>
+      <div class="pain-card reveal">
+        <span class="pain-icon">🧠</span>
+        <h3>Ideia boa que morreu no grupo do WhatsApp</h3>
+        <p>Você tuita a ideia pro Notes, pro grupo, num papel... e quando vai criar o conteúdo, sumiu. Ou você esqueceu o contexto.</p>
+      </div>
+      <div class="pain-card reveal">
+        <span class="pain-icon">📅</span>
+        <h3>A consistência quebra todo mês</h3>
+        <p>Você começa forte, mas sem planejamento visual do que vai postar, a rotina desmorona na segunda semana.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUTION INTRO -->
+<section class="solution-intro">
+  <div class="container--narrow">
+    <p class="section-label" style="text-align:center">A Solução</p>
+    <h2 class="reveal">Não é só uma ferramenta.<br>É um <em>ecossistema</em> completo.</h2>
+    <p class="reveal">Criamos um fluxo fechado: da ideia bruta ao post publicado. Sem abrir 5 abas. Sem precisar de designer. Sem perder o fio.</p>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+  <div class="container">
+
+    <!-- Feature 1 -->
+    <div class="feature-block reveal">
+      <div class="feature-content">
+        <div class="fnum">01</div>
+        <span class="ftag">Criação de Conteúdo</span>
+        <h3>Posts cinematográficos.<br>Em menos de 1 minuto.</h3>
+        <p>8 estilos de estáticos com design editorial de alto nível — personalizáveis e otimizados com IA. O visual que antes custava agência, agora está a um clique.</p>
+        <ul class="flist">
+          <li>8 estilos virais com identidade visual premium</li>
+          <li>Personalização completa sem saber design</li>
+          <li>IA integrada para otimizar a copy do conteúdo</li>
+          <li>Resultado profissional, toda vez — sem erro</li>
+        </ul>
+      </div>
+      <div class="fvis">
+        <div class="mbadge">8 estilos</div>
+        <div class="mock-header"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <div class="mock-grid">
+          <div class="ms">🎬</div><div class="ms">📸</div><div class="ms">🖼️</div><div class="ms">✍️</div>
+          <div class="ms">📊</div><div class="ms">💬</div><div class="ms">🎨</div><div class="ms">⚡</div>
+        </div>
+        <div style="margin-top:28px;text-align:center">
+          <div class="mtimer">0:47</div>
+          <div class="mtimer-lbl">tempo médio para criar um post</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature 2 -->
+    <div class="feature-block rev reveal">
+      <div class="feature-content">
+        <div class="fnum">02</div>
+        <span class="ftag">Banco de Ideias</span>
+        <h3>Sua mente organizada.<br>Suas ideias salvas.</h3>
+        <p>Um espaço inteligente onde você captura, organiza e desenvolve cada ideia — com pastas, checklists, referências e status. No plano Anual, a IA transforma sua ideia crua em pauta completa.</p>
+        <ul class="flist">
+          <li>Organização em pastas por tema, nicho ou campanha</li>
+          <li>Checklist para não deixar nada para trás</li>
+          <li>Referências visuais e de copy em um só lugar</li>
+          <li class="star">IA que expande sua ideia com repertório (Anual)</li>
+        </ul>
+      </div>
+      <div class="fvis">
+        <div style="width:100%">
+          <div class="mfolder active">📁 Conteúdo — Novembro</div>
+          <div class="mfolder">📁 Ideias Soltas</div>
+          <div class="mfolder">📁 Referências Visuais</div>
+          <div style="height:12px"></div>
+          <div class="midea"><div class="cb done">✓</div>Post sobre posicionamento de preço</div>
+          <div class="midea"><div class="cb done">✓</div>Carrossel: 5 erros de quem começa</div>
+          <div class="midea"><div class="cb"></div>Bastidores do lançamento</div>
+          <div class="midea"><div class="cb"></div>Comparativo antes/depois</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature 3 -->
+    <div class="feature-block reveal">
+      <div class="feature-content">
+        <div class="fnum">03</div>
+        <span class="ftag">Planner Visual</span>
+        <h3>Um mês de conteúdo<br>planejado em uma tarde.</h3>
+        <p>Visualize todo o seu calendário editorial em um olhar. Organize, mova, marque como feito e salve os posts prontos direto no planner — chega de correria no dia da publicação.</p>
+        <ul class="flist">
+          <li>Calendário editorial visual e intuitivo</li>
+          <li>Publicações de todas as redes em um só lugar</li>
+          <li>Posts salvos e prontos para publicar</li>
+          <li>Marcação de status: planejado, criado, publicado</li>
+        </ul>
+      </div>
+      <div class="fvis">
+        <div style="width:100%">
+          <div class="cal-h"><span>◀ Novembro 2025 ▶</span></div>
+          <div class="cal-g">
+            <div class="cdl">D</div><div class="cdl">S</div><div class="cdl">T</div><div class="cdl">Q</div><div class="cdl">Q</div><div class="cdl">S</div><div class="cdl">S</div>
+            <div class="cd"></div><div class="cd"></div><div class="cd"></div><div class="cd"></div>
+            <div class="cd has">1</div><div class="cd">2</div><div class="cd has">3</div>
+            <div class="cd">4</div><div class="cd dn">5</div><div class="cd">6</div><div class="cd dn">7</div><div class="cd">8</div><div class="cd has">9</div><div class="cd today">10</div>
+            <div class="cd">11</div><div class="cd has">12</div><div class="cd">13</div><div class="cd has">14</div><div class="cd">15</div><div class="cd">16</div><div class="cd has">17</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="comparison">
+  <div class="container">
+    <p class="section-label" style="text-align:center">Comparativo</p>
+    <h2 class="reveal">Por que o Blent Boost<br><em>não tem concorrente real?</em></h2>
+    <p class="comparison-sub reveal">Não somos mais um editor de fotos. Somos o fluxo completo.</p>
+    <div class="comp-wrap reveal">
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th class="th-b">Blent Boost</th>
+            <th class="th-o">Canva / Adobe</th>
+            <th class="th-o">Agência</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Post profissional em menos de 1 min</td><td><span class="cy">✓</span></td><td><span class="cn">✗</span></td><td><span class="cn">✗</span></td></tr>
+          <tr><td>Design editorial premium (sem saber design)</td><td><span class="cy">✓</span></td><td><span class="cp">Parcial</span></td><td><span class="cy">✓</span></td></tr>
+          <tr><td>Banco de Ideias integrado</td><td><span class="cy">✓</span></td><td><span class="cn">✗</span></td><td><span class="cn">✗</span></td></tr>
+          <tr><td>Planner editorial visual</td><td><span class="cy">✓</span></td><td><span class="cn">✗</span></td><td><span class="cp">Parcial</span></td></tr>
+          <tr><td>IA integrada no fluxo criativo</td><td><span class="cy">✓</span></td><td><span class="cp">Básico</span></td><td><span class="cn">✗</span></td></tr>
+          <tr><td>Preço acessível</td><td><span class="cy">✓</span></td><td><span class="cy">✓</span></td><td><span class="cn">✗</span></td></tr>
+          <tr><td>Fluxo ideia → criação → publicação em 1 lugar</td><td><span class="cy">✓</span></td><td><span class="cn">✗</span></td><td><span class="cn">✗</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials">
+  <div class="container">
+    <h2 class="reveal">O que criadores dizem<br>depois de usar</h2>
+    <div class="tg">
+      <div class="tc reveal">
+        <div class="tst">★★★★★</div>
+        <p class="tt">"Eu perdia fácil 3 horas por semana só montando post no Canva. Hoje faço o mesmo em 15 minutos e o resultado ficou muito mais bonito. Minhas histórias aumentaram de engajamento porque o visual chama atenção."</p>
+        <div class="ta"><div class="tav">👩</div><div><div class="tn">Ana Carolina M.</div><div class="tr">Nutricionista · 12k seguidores</div></div></div>
+      </div>
+      <div class="tc reveal">
+        <div class="tst">★★★★★</div>
+        <p class="tt">"Gerencio o social de 5 clientes. O Banco de Ideias com o Planner mudou completamente minha organização. Agora entro segunda-feira sabendo exatamente o que criar pra semana. Parei de apagar fogo."</p>
+        <div class="ta"><div class="tav">👨</div><div><div class="tn">Rafael S.</div><div class="tr">Social Media Freelancer</div></div></div>
+      </div>
+      <div class="tc reveal">
+        <div class="tst">★★★★★</div>
+        <p class="tt">"Sou advogado e não tenho tempo nem habilidade pra design. O Blent Boost foi a primeira ferramenta que não me fez sentir perdido. Em 40 segundos eu tenho um post que parece que um designer fez."</p>
+        <div class="ta"><div class="tav">⚖️</div><div><div class="tn">Dr. Marcos T.</div><div class="tr">Advogado · Personal Branding</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <p class="section-label" style="text-align:center">Planos</p>
+    <h2 class="reveal">Simples. <em>Sem taxa escondida.</em></h2>
+    <p class="pricing-sub reveal">Todas as funcionalidades principais em qualquer plano.</p>
+    <p class="pricing-note reveal">Acesso imediato após o pagamento. Sem contrato. Cancele quando quiser.</p>
+    <div class="pgrid reveal">
+      <!-- Mensal -->
+      <div class="pc">
+        <div class="pperiod">Mensal</div>
+        <div class="pval"><sup>R$</sup>49</div>
+        <p class="psave">&nbsp;</p>
+        <div class="pdiv"></div>
+        <ul class="pf">
+          <li>Blent Boost — 8 estilos virais</li>
+          <li>Personalização completa</li>
+          <li>IA para otimizar a copy</li>
+          <li>Banco de Ideias completo</li>
+          <li>Planner editorial visual</li>
+        </ul>
+        <a href="#" class="bp gh">Começar no Mensal</a>
+      </div>
+      <!-- Trimestral -->
+      <div class="pc ft">
+        <div class="pbadge">Mais popular</div>
+        <div class="pperiod">Trimestral</div>
+        <div class="pval"><sup>R$</sup>129<sup style="font-size:16px">,90</sup></div>
+        <p class="psave">Equivale a R$43/mês — economia de 12%</p>
+        <div class="pdiv"></div>
+        <ul class="pf">
+          <li>Blent Boost — 8 estilos virais</li>
+          <li>Personalização completa</li>
+          <li>IA para otimizar a copy</li>
+          <li>Banco de Ideias completo</li>
+          <li>Planner editorial visual</li>
+        </ul>
+        <a href="#" class="bp pr">Quero esse plano →</a>
+      </div>
+      <!-- Anual -->
+      <div class="pc">
+        <div class="pperiod">Anual</div>
+        <div class="pval"><sup>R$</sup>497<sup style="font-size:16px">,90</sup></div>
+        <p class="psave">Equivale a R$41/mês — economia de 15%</p>
+        <div class="pdiv"></div>
+        <ul class="pf">
+          <li>Blent Boost — 8 estilos virais</li>
+          <li>Personalização completa</li>
+          <li>IA para otimizar a copy</li>
+          <li>Banco de Ideias completo</li>
+          <li>Planner editorial visual</li>
+          <li class="ex">IA no Banco de Ideias — expande sua ideia com repertório e pautas completas</li>
+          <li class="ex">Suporte prioritário</li>
+        </ul>
+        <a href="#" class="bp gh">Quero o Anual</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GUARANTEE -->
+<section class="guarantee">
+  <div class="container">
+    <div class="gbox reveal">
+      <span class="gicon">🛡️</span>
+      <h3>Não gostou? A gente devolve.</h3>
+      <p>Oferecemos <strong>7 dias de garantia total.</strong> Se por qualquer motivo o Blent Boost não for o que você esperava, basta pedir o estorno — sem burocracia, sem perguntas, sem julgamento. O risco é inteiramente nosso.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+  <div class="container--narrow">
+    <h2 class="reveal">Perguntas frequentes</h2>
+    <div class="fi reveal">
+      <div class="fq" onclick="this.parentElement.classList.toggle('open')">
+        <h4>Preciso saber design ou usar o Canva?</h4>
+        <div class="ftog">+</div>
+      </div>
+      <div class="fa">Não. O Blent Boost foi criado exatamente para quem <em>não</em> quer aprender design. Você escolhe um dos 8 estilos, personaliza as informações e o post está pronto. Sem aprender nada de tipografia, cor ou layout.</div>
+    </div>
+    <div class="fi reveal">
+      <div class="fq" onclick="this.parentElement.classList.toggle('open')">
+        <h4>O que acontece se eu cancelar o plano?</h4>
+        <div class="ftog">+</div>
+      </div>
+      <div class="fa">Você mantém acesso até o final do período pago. Depois disso, o acesso é bloqueado. Não existe cobrança extra ou fidelidade. Você está no controle.</div>
+    </div>
+    <div class="fi reveal">
+      <div class="fq" onclick="this.parentElement.classList.toggle('open')">
+        <h4>A IA está disponível em todos os planos?</h4>
+        <div class="ftog">+</div>
+      </div>
+      <div class="fa">A IA para otimizar a copy dos posts está em todos os planos. Já a IA do Banco de Ideias — que expande sua ideia com pautas completas, repertório e fatos — é exclusiva do plano Anual.</div>
+    </div>
+    <div class="fi reveal">
+      <div class="fq" onclick="this.parentElement.classList.toggle('open')">
+        <h4>Funciona para qual tipo de conteúdo?</h4>
+        <div class="ftog">+</div>
+      </div>
+      <div class="fa">O Blent Boost é ideal para conteúdo estático: posts de feed, stories informativos e peças editoriais. Perfeito para quem quer consistência e qualidade visual sem investir horas.</div>
+    </div>
+    <div class="fi reveal">
+      <div class="fq" onclick="this.parentElement.classList.toggle('open')">
+        <h4>Funciona para gestores de social media com múltiplos clientes?</h4>
+        <div class="ftog">+</div>
+      </div>
+      <div class="fa">Sim. O Banco de Ideias com pastas separadas e o Planner visual fazem o Blent Boost ser especialmente poderoso para quem gerencia mais de uma marca. Organize cada cliente em sua pasta, planeje tudo no calendário e produza rápido.</div>
+    </div>
+    <div class="fi reveal">
+      <div class="fq" onclick="this.parentElement.classList.toggle('open')">
+        <h4>É possível exportar os posts criados?</h4>
+        <div class="ftog">+</div>
+      </div>
+      <div class="fa">Sim. Você exporta os posts em alta resolução, prontos para publicar em qualquer rede social.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <div class="container--narrow">
+    <h2 class="reveal">Chega de postar quando dá.<br><em>Comece a postar todo dia.</em></h2>
+    <p class="reveal">Seu concorrente já está criando conteúdo. A diferença vai ser a qualidade — e a velocidade — dos seus.</p>
+    <a href="#pricing" class="btn-primary reveal">
+      Criar minha conta agora <span class="arr">→</span>
+    </a>
+    <div class="fgs reveal">
+      <div class="fg">🔒 Pagamento 100% seguro</div>
+      <div class="fg">⚡ Acesso imediato</div>
+      <div class="fg">🛡️ 7 dias de garantia</div>
+      <div class="fg">🚫 Sem fidelidade</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="fi2">
+      <div class="fl">Blent <span>Boost</span></div>
+      <p>© 2025 Blent Assessoria. Todos os direitos reservados.</p>
+      <p>Termos de Uso · Política de Privacidade</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Scroll Reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 70);
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Particles
+const pc = document.getElementById('particles');
+for (let i = 0; i < 20; i++) {
+  const p = document.createElement('div');
+  p.className = 'p';
+  const size = Math.random() * 3 + 1;
+  p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;animation-duration:${6+Math.random()*10}s;animation-delay:${Math.random()*8}s`;
+  pc.appendChild(p);
+}
+
+// Animate counter stats
+const nums = document.querySelectorAll('.stat-num');
+const numObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.style.animation = 'fsu .6s ease both';
+      numObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.5 });
+nums.forEach(n => numObs.observe(n));
+
+// Nav scroll effect
+window.addEventListener('scroll', () => {
+  document.querySelector('nav').style.borderBottomColor =
+    window.scrollY > 50 ? 'rgba(212,255,87,0.15)' : 'rgba(212,255,87,0.07)';
+});
+</script>
+</body>
+</html>
