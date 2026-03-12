@@ -24,12 +24,13 @@ import {
   Save,
   X,
   ShoppingCart,
+  Wand2
 } from 'lucide-react';
 import { toPng, toJpeg } from 'html-to-image';
 import jsPDF from 'jspdf';
 import Markdown from 'react-markdown';
 import { cn, highlightText, renderContent } from './lib/utils';
-import { analyzePostStyle, generateCaption, generateAudienceQuestions, generateBackgroundImages, suggestTextVariations } from './services/gemini';
+import { analyzePostStyle, generateCaption, generateAudienceQuestions, generateBackgroundImages, suggestTextVariations, hasCustomApiKey, checkImageDailyLimit } from './services/gemini';
 import { TemplateType, SlideLayout, AspectRatio, ToolType, UserProfile, Insight, LibraryItem, AdScript, ExportFormat } from './types';
 import { usePostEditor, INITIAL_DATA } from './hooks/usePostEditor';
 import { useTokenGate } from './hooks/useTokenGate';
@@ -61,7 +62,7 @@ import { Toaster, toast } from 'sonner';
 import { OnboardingModal } from './components/OnboardingModal';
 import { BlockedModal } from './components/BlockedModal';
 import { ResetPassword } from './components/ResetPassword';
-
+import { AiErrorModal } from './components/AiErrorModal';
 
 
 
@@ -70,6 +71,8 @@ function MainApp() {
   const { isLowBalance, isBlocked, isUnlimited, canAfford, costLabel, deductTokens, TOKEN_COSTS, blockReason, checkAccess } = useTokenGate();
   const showTokens = (isAdmin || APP_VERSION === 'boost');
   const [showBlockedModal, setShowBlockedModal] = useState(false);
+  const [showAiErrorModal, setShowAiErrorModal] = useState(false);
+  const [aiErrorMessage, setAiErrorMessage] = useState('');
   const [showLowBanner, setShowLowBanner] = useState(true);
   const [currentTool, setCurrentTool] = useState<ToolType>('home');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -103,6 +106,10 @@ function MainApp() {
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [isSuggestingText, setIsSuggestingText] = useState(false);
+  const [isGeneratingCarousel, setIsGeneratingCarousel] = useState(false);
+  const [carouselTopic, setCarouselTopic] = useState('');
+  const [carouselSlideCount, setCarouselSlideCount] = useState(5);
+  const [isCarouselOpen, setIsCarouselOpen] = useState(false);
   const [initialAdsData, setInitialAdsData] = useState<AdScript | null>(null);
   const [initialStoryData, setInitialStoryData] = useState<any>(null);
   const [totalItemsCount, setTotalItemsCount] = useState(0);
@@ -264,15 +271,92 @@ function MainApp() {
 
   const handleGenerateBackgroundImages = async () => {
     if (!currentSlide.title) return;
+    
+    // Verificar limite diário para quem usa chave do servidor
+    if (!hasCustomApiKey()) {
+      const { allowed, used, limit } = checkImageDailyLimit();
+      if (!allowed) {
+        toast.error(`Limite diário atingido (${used}/${limit}). Adicione sua chave API nas configurações do perfil para uso ilimitado.`, { duration: 5000 });
+        return;
+      }
+    }
+    
     if (!(await deductTokens('generateBackgroundImages'))) return;
     setIsGeneratingImages(true);
-    const images = await generateBackgroundImages(currentSlide.title, imagePrompt);
-    if (images.length === 0) {
-      toast.error('Não foi possível gerar imagens. Tente novamente.');
-    } else {
-      setSuggestedImages(images);
+    try {
+      const images = await generateBackgroundImages(currentSlide.title, imagePrompt, undefined);
+      if (images.length === 0) {
+        if (!hasCustomApiKey()) {
+          toast.error('Não foi possível gerar a imagem. Verifique se a cota do servidor está disponível.');
+        } else {
+          toast.error('Não foi possível gerar a imagem. Verifique se o modelo selecionado está disponível na sua chave API.');
+        }
+      } else {
+        setSuggestedImages(images);
+        if (!hasCustomApiKey()) {
+          const { used, limit } = checkImageDailyLimit();
+          toast.success(`Imagem gerada! (${used}/${limit} hoje)`);
+        } else {
+          toast.success('Imagem gerada com sua chave customizada!');
+        }
+      }
+    } catch (err: any) {
+      const msg = err.message;
+      if (msg === 'PAY_AS_YOU_GO_REQUIRED') {
+        setAiErrorMessage('O modelo selecionado (como Imagen 3 ou 4) exige que o "Pay-as-you-go" (Faturamento) esteja ativado no Google AI Studio. Contas 100% gratuitas não rodam este modelo premium sem um cartão. Altere o modelo de imagem para o padrão "Flash Preview".');
+        setShowAiErrorModal(true);
+      } else if (msg === 'QUOTA_EXCEEDED') {
+        setAiErrorMessage('O limite de uso da API foi excedido (Muitas requisições em pouco tempo ou cota gratuita estourada). Tente novamente em alguns minutos.');
+        setShowAiErrorModal(true);
+      } else if (msg === 'INVALID_API_KEY') {
+        setAiErrorMessage('A chave da API informada é inválida ou não tem permissão para usar este serviço.');
+        setShowAiErrorModal(true);
+      } else {
+        setAiErrorMessage(msg);
+        setShowAiErrorModal(true);
+      }
     }
     setIsGeneratingImages(false);
+  };
+
+  const handleGenerateCarousel = async () => {
+    if (!carouselTopic.trim()) {
+      toast.error('Informe um tema para o carrossel.');
+      return;
+    }
+    // Using deductTokens('generateInsights') as a fallback token cost for Carousel creation
+    if (!(await deductTokens('generateInsights'))) return; 
+    setIsGeneratingCarousel(true);
+    try {
+      const { generateCarouselContent } = await import('./services/gemini');
+      const slidesContent = await generateCarouselContent(carouselTopic, carouselSlideCount);
+      
+      if (slidesContent && slidesContent.length > 0) {
+        setPostData(prev => {
+          const newSlides = slidesContent.map((sc: any, idx: number) => ({
+            ...INITIAL_DATA.slides[0], // Base slide
+            id: crypto.randomUUID(),
+            title: sc.title,
+            description: sc.description || '',
+            layout: 'text-only' as const,
+            imageConfig: { scale: 1, x: 0, y: 0, brightness: 1 }
+          }));
+          return {
+            ...prev,
+            slides: newSlides.slice(0, MAX_SLIDES)
+          };
+        });
+        setCurrentSlideIndex(0);
+        toast.success('Carrossel gerado com sucesso!');
+        setCarouselTopic('');
+      } else {
+        toast.error('Falha ao gerar o carrossel. Tente novamente.');
+      }
+    } catch (e) {
+      toast.error('Erro inesperado ao gerar carrossel.');
+    } finally {
+      setIsGeneratingCarousel(false);
+    }
   };
 
   const [isGeneratingQuote, setIsGeneratingQuote] = useState(false);
@@ -677,7 +761,9 @@ function MainApp() {
                                           return (
                                             <button
                                               key={layout}
-                                              onClick={() => updateSlideLayout(layoutName)}
+                                              onClick={() => {
+                                                updateSlideLayout(layoutName);
+                                              }}
                                               className={cn(
                                                 "py-3 px-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all flex flex-col items-center gap-2 text-center",
                                                 currentSlide.layout === layout
@@ -695,6 +781,149 @@ function MainApp() {
                                           );
                                         })}
                                   </div>
+                                </section>
+                              )}
+
+                              {/* Image Settings */}
+                              {(currentSlide.layout !== 'text-only' || postData.templateType === 'atmospheric') && (
+                                <section className="pt-6 border-t border-white/[0.06] space-y-6">
+                                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 flex items-center gap-2">
+                                    <ImageIcon className="w-3 h-3" />
+                                    Imagem Principal do Slide
+                                  </h2>
+                                  <div className="flex flex-col gap-3">
+                                    {currentSlide.layout === 'image-bg' || postData.templateType === 'atmospheric' ? (
+                                      <input
+                                        type="text"
+                                        value={imagePrompt}
+                                        onChange={(e) => setImagePrompt(e.target.value)}
+                                        placeholder="Descreva a imagem de fundo para a IA gerar..."
+                                        className="w-full p-4 bg-white/[0.02] rounded-xl border border-white/[0.08] focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all text-xs font-bold text-white placeholder:text-white/20 focus:outline-none"
+                                      />
+                                    ) : null}
+
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => slideImageInputRef.current?.click()}
+                                        className="flex-1 py-3 bg-white/[0.04] border border-white/[0.08] text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
+                                      >
+                                        <Upload className="w-3.5 h-3.5" />
+                                        {currentSlide.imageUrl ? 'Trocar Imagem' : 'Fazer Upload'}
+                                      </button>
+                                      {(currentSlide.layout === 'image-bg' || postData.templateType === 'atmospheric') && (
+                                        <button
+                                          onClick={handleGenerateBackgroundImages}
+                                          disabled={isGeneratingImages || !currentSlide.title}
+                                          className="flex-1 py-3 bg-violet-600/20 text-violet-400 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-violet-600/30 border border-violet-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-center"
+                                          title={!currentSlide.title ? 'Defina um título principal primeiro' : 'Criar Fundo com IA'}
+                                        >
+                                          {isGeneratingImages ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                          {isGeneratingImages ? 'Gerando...' : 'Criar Fundo IA'}
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {currentSlide.suggestedImages && currentSlide.suggestedImages.length > 0 && (
+                                      <div className="grid grid-cols-3 gap-2 pt-2">
+                                        {currentSlide.suggestedImages.map((img, i) => (
+                                          <button
+                                            key={i}
+                                            onClick={() => applySuggestedImage(img)}
+                                            className="aspect-square rounded-xl overflow-hidden border-2 border-transparent hover:border-violet-500 transition-all relative group"
+                                          >
+                                            <img src={img} className="w-full h-full object-cover" alt={`Sugestão ${i + 1}`} />
+                                            <div className="absolute inset-0 bg-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                              <CheckCircle2 className="w-5 h-5 text-white" />
+                                            </div>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {currentSlide.imageUrl && (
+                                      <button
+                                        onClick={removeSlideImage}
+                                        className="w-full py-2.5 text-red-500/60 text-[9px] font-black uppercase tracking-widest hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                                      >
+                                        Remover Imagem
+                                      </button>
+                                    )}
+                                  </div>
+                                  <input type="file" ref={slideImageInputRef} onChange={handleSlideImageUpload} className="hidden" accept="image/*" />
+
+                                  {currentSlide.imageUrl && (
+                                    <div className="space-y-6 pt-4 border-t border-white/[0.06]">
+                                      <h3 className="text-[10px] font-black uppercase tracking-widest text-white/30">Ajustes da Imagem</h3>
+                                      <div className="space-y-4">
+                                        <div className="space-y-2">
+                                          <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
+                                            <span>Scale (Zoom)</span>
+                                            <span>{Math.round((currentSlide.imageConfig?.scale || 1) * 100)}%</span>
+                                          </div>
+                                          <input
+                                            type="range" min="0.5" max="3" step="0.1"
+                                            value={currentSlide.imageConfig?.scale || 1}
+                                            onChange={(e) => updateImageConfig({ scale: parseFloat(e.target.value) })}
+                                            className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                                          />
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
+                                              <span>Posição X</span>
+                                              <span>{currentSlide.imageConfig?.x || 0}px</span>
+                                            </div>
+                                            <input
+                                              type="range" min="-200" max="200" step="1"
+                                              value={currentSlide.imageConfig?.x || 0}
+                                              onChange={(e) => updateImageConfig({ x: parseInt(e.target.value) })}
+                                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                                            />
+                                          </div>
+                                          <div className="space-y-2">
+                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
+                                              <span>Posição Y</span>
+                                              <span>{currentSlide.imageConfig?.y || 0}px</span>
+                                            </div>
+                                            <input
+                                              type="range" min="-200" max="200" step="1"
+                                              value={currentSlide.imageConfig?.y || 0}
+                                              onChange={(e) => updateImageConfig({ y: parseInt(e.target.value) })}
+                                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                                            />
+                                          </div>
+                                        </div>
+                                        {(currentSlide.layout === 'image-bg' || postData.templateType === 'atmospheric') && (
+                                          <>
+                                            <div className="space-y-2">
+                                              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
+                                                <span>Desfoque (Blur Fundo)</span>
+                                                <span>{currentSlide.bgBlur || 0}px</span>
+                                              </div>
+                                              <input
+                                                type="range" min="0" max="20" step="1"
+                                                value={currentSlide.bgBlur || 0}
+                                                onChange={(e) => updateSlideBlur(parseInt(e.target.value))}
+                                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                                              />
+                                            </div>
+                                            <div className="space-y-2">
+                                              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
+                                                <span>Exposição Brilho</span>
+                                                <span>{Math.round((currentSlide.bgBrightness ?? 1) * 100)}%</span>
+                                              </div>
+                                              <input
+                                                type="range" min="0.1" max="2" step="0.05"
+                                                value={currentSlide.bgBrightness ?? 1}
+                                                onChange={(e) => updateSlideBrightness(parseFloat(e.target.value))}
+                                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
+                                              />
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                 </section>
                               )}
 
@@ -1002,6 +1231,7 @@ function MainApp() {
                               exit={{ opacity: 0, y: -10 }}
                               className="space-y-8"
                             >
+                              
                               <section>
                                 <div className="flex items-center justify-between mb-4">
                                   <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 flex items-center gap-2">
@@ -1119,151 +1349,79 @@ function MainApp() {
 
                               </section>
 
-                              {/* Image Settings */}
-                              {(currentSlide.layout !== 'text-only' || postData.templateType === 'atmospheric') && (
-                                <section className="pt-6 border-t border-white/[0.06] space-y-6">
-                                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-4 flex items-center gap-2">
-                                    <ImageIcon className="w-3 h-3" />
-                                    2. Imagem Principal
-                                  </h2>
-                                  <div className="flex flex-col gap-3">
-                                    {currentSlide.layout === 'image-bg' || postData.templateType === 'atmospheric' ? (
-                                      <input
-                                        type="text"
-                                        value={imagePrompt}
-                                        onChange={(e) => setImagePrompt(e.target.value)}
-                                        placeholder="Descreva a imagem de fundo para a IA gerar..."
-                                        className="w-full p-4 bg-white/[0.02] rounded-xl border border-white/[0.08] focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all text-xs font-bold text-white placeholder:text-white/20 focus:outline-none"
-                                      />
-                                    ) : null}
+                              {/* Image Settings originally were here */}
 
-                                    <div className="flex gap-2">
-                                      <button
-                                        onClick={() => slideImageInputRef.current?.click()}
-                                        className="flex-1 py-3 bg-white/[0.04] border border-white/[0.08] text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
-                                      >
-                                        <Upload className="w-3.5 h-3.5" />
-                                        {currentSlide.imageUrl ? 'Trocar Imagem' : 'Fazer Upload'}
-                                      </button>
-                                      {(currentSlide.layout === 'image-bg' || postData.templateType === 'atmospheric') && (
-                                        <div className="relative flex-1" title="Em breve disponível">
-                                          <button
-                                            disabled
-                                            className="w-full py-3 bg-violet-600/30 text-white/30 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed select-none border border-violet-500/10"
-                                          >
-                                            <Sparkles className="w-3.5 h-3.5" />
-                                            Criar Fundo IA
-                                          </button>
-                                          <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                                            <span className="absolute -top-9 left-1/2 -translate-x-1/2 bg-[#1a1a24] text-white text-[10px] font-bold px-3 py-1.5 rounded-lg border border-white/10 shadow-xl whitespace-nowrap">?? Em breve disponível</span>
-                                          </div>
+                              {/* ✨ GERADOR MÁGICO DE CARROSSEL - DROPDOWN NO FUNDO */}
+                              <section className="pt-6 border-t border-white/[0.06]">
+                                <button
+                                  onClick={() => setIsCarouselOpen(v => !v)}
+                                  className="w-full flex items-center justify-between p-4 bg-gradient-to-r from-violet-600/15 to-fuchsia-600/15 hover:from-violet-600/25 hover:to-fuchsia-600/25 border border-violet-500/25 rounded-2xl transition-all group"
+                                >
+                                  <span className="flex items-center gap-2.5">
+                                    <span className="p-1.5 bg-violet-500/20 rounded-lg">
+                                      <Wand2 className="w-3.5 h-3.5 text-violet-400" />
+                                    </span>
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-violet-300">✨ Gerador de Carrossel com IA</span>
+                                  </span>
+                                  <ChevronRight className={cn(
+                                    "w-4 h-4 text-violet-400/60 transition-transform duration-200",
+                                    isCarouselOpen && "rotate-90"
+                                  )} />
+                                </button>
+
+                                <AnimatePresence>
+                                  {isCarouselOpen && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.2 }}
+                                      className="overflow-hidden"
+                                    >
+                                      <div className="pt-4 space-y-4">
+                                        <p className="text-[11px] font-bold text-white/30">
+                                          Informe o tema e nossa IA cria todos os slides do carrossel: gancho, conteúdo de valor e CTA final.
+                                        </p>
+                                        <div>
+                                          <label className="text-[10px] font-black uppercase tracking-widest text-violet-300/70">Tema do Carrossel</label>
+                                          <input
+                                            type="text"
+                                            value={carouselTopic}
+                                            onChange={(e) => setCarouselTopic(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && !isGeneratingCarousel && carouselTopic.trim() && handleGenerateCarousel()}
+                                            placeholder="Ex: Como fechar mais vendas no direct..."
+                                            className="w-full p-3 mt-2 bg-white/[0.04] rounded-xl border border-white/[0.08] focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/30 transition-all text-xs font-bold text-white placeholder:text-white/20 focus:outline-none"
+                                          />
                                         </div>
-                                      )}
-                                    </div>
-
-                                    {currentSlide.suggestedImages && currentSlide.suggestedImages.length > 0 && (
-                                      <div className="grid grid-cols-3 gap-2 pt-2">
-                                        {currentSlide.suggestedImages.map((img, i) => (
-                                          <button
-                                            key={i}
-                                            onClick={() => applySuggestedImage(img)}
-                                            className="aspect-square rounded-xl overflow-hidden border-2 border-transparent hover:border-violet-500 transition-all relative group"
-                                          >
-                                            <img src={img} className="w-full h-full object-cover" alt={`Sugestão ${i + 1}`} />
-                                            <div className="absolute inset-0 bg-violet-500/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                              <CheckCircle2 className="w-5 h-5 text-white" />
-                                            </div>
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-
-                                    {currentSlide.imageUrl && (
-                                      <button
-                                        onClick={removeSlideImage}
-                                        className="w-full py-2.5 text-red-500/60 text-[9px] font-black uppercase tracking-widest hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
-                                      >
-                                        Remover Imagem
-                                      </button>
-                                    )}
-                                  </div>
-                                  <input type="file" ref={slideImageInputRef} onChange={handleSlideImageUpload} className="hidden" accept="image/*" />
-
-                                  {currentSlide.imageUrl && (
-                                    <div className="space-y-6 pt-4 border-t border-white/[0.06]">
-                                      <h3 className="text-[10px] font-black uppercase tracking-widest text-white/30">Ajustes da Imagem</h3>
-                                      <div className="space-y-4">
-                                        <div className="space-y-2">
-                                          <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
-                                            <span>Scale (Zoom)</span>
-                                            <span>{Math.round((currentSlide.imageConfig?.scale || 1) * 100)}%</span>
+                                        <div>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <label className="text-[10px] font-black uppercase tracking-widest text-violet-300/70">Número de Slides</label>
+                                            <span className="text-white font-black text-xs bg-violet-500/20 px-2 py-0.5 rounded-lg border border-violet-500/30">{carouselSlideCount}</span>
                                           </div>
                                           <input
-                                            type="range" min="0.5" max="3" step="0.1"
-                                            value={currentSlide.imageConfig?.scale || 1}
-                                            onChange={(e) => updateImageConfig({ scale: parseFloat(e.target.value) })}
+                                            type="range"
+                                            min={3}
+                                            max={MAX_SLIDES}
+                                            step="1"
+                                            value={carouselSlideCount}
+                                            onChange={(e) => setCarouselSlideCount(parseInt(e.target.value))}
                                             className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
                                           />
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                          <div className="space-y-2">
-                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
-                                              <span>Posição X</span>
-                                              <span>{currentSlide.imageConfig?.x || 0}px</span>
-                                            </div>
-                                            <input
-                                              type="range" min="-200" max="200" step="1"
-                                              value={currentSlide.imageConfig?.x || 0}
-                                              onChange={(e) => updateImageConfig({ x: parseInt(e.target.value) })}
-                                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
-                                            />
-                                          </div>
-                                          <div className="space-y-2">
-                                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
-                                              <span>Posição Y</span>
-                                              <span>{currentSlide.imageConfig?.y || 0}px</span>
-                                            </div>
-                                            <input
-                                              type="range" min="-200" max="200" step="1"
-                                              value={currentSlide.imageConfig?.y || 0}
-                                              onChange={(e) => updateImageConfig({ y: parseInt(e.target.value) })}
-                                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
-                                            />
-                                          </div>
-                                        </div>
-                                        {(currentSlide.layout === 'image-bg' || postData.templateType === 'atmospheric') && (
-                                          <>
-                                            <div className="space-y-2">
-                                              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
-                                                <span>Desfoque (Blur Fundo)</span>
-                                                <span>{currentSlide.bgBlur || 0}px</span>
-                                              </div>
-                                              <input
-                                                type="range" min="0" max="20" step="1"
-                                                value={currentSlide.bgBlur || 0}
-                                                onChange={(e) => updateSlideBlur(parseInt(e.target.value))}
-                                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
-                                              />
-                                            </div>
-                                            <div className="space-y-2">
-                                              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
-                                                <span>Exposição Brilho</span>
-                                                <span>{Math.round((currentSlide.bgBrightness ?? 1) * 100)}%</span>
-                                              </div>
-                                              <input
-                                                type="range" min="0.1" max="2" step="0.05"
-                                                value={currentSlide.bgBrightness ?? 1}
-                                                onChange={(e) => updateSlideBrightness(parseFloat(e.target.value))}
-                                                className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
-                                              />
-                                            </div>
-                                          </>
-                                        )}
+                                        <button
+                                          onClick={handleGenerateCarousel}
+                                          disabled={isGeneratingCarousel || !carouselTopic.trim()}
+                                          className="w-full py-3.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/20"
+                                        >
+                                          {isGeneratingCarousel ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                                          {isGeneratingCarousel ? 'Gerando slides...' : 'Gerar Carrossel'}
+                                        </button>
                                       </div>
-                                    </div>
+                                    </motion.div>
                                   )}
-                                </section>
-                              )}
+                                </AnimatePresence>
+                              </section>
+
                             </motion.div>
                           )
                         }
@@ -1746,6 +1904,13 @@ function MainApp() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* AI Error Modal */}
+        <AiErrorModal
+          isOpen={showAiErrorModal}
+          onClose={() => setShowAiErrorModal(false)}
+          message={aiErrorMessage}
+        />
       </div >
     </div >
   );

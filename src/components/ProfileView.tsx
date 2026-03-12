@@ -24,7 +24,9 @@ import {
   XCircle,
   CheckCircle,
   ClockIcon,
-  ChevronDown
+  ChevronDown,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { UserProfile, LibraryItem } from '../types';
@@ -34,6 +36,8 @@ import { supabase } from '../lib/supabase';
 
 import { useAuth } from '../contexts/AuthContext';
 import { APP_VERSION } from '../config/appVersion';
+import { listImageModels, getPreferredImageModel, setPreferredImageModel } from '../services/gemini';
+import { detectProvider, PROVIDERS } from '../services/aiProvider';
 
 interface ProfileViewProps {
   userEmail: string;
@@ -64,6 +68,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
   // Memory Card Slots State
   const [activeAudienceSlot, setActiveAudienceSlot] = useState(0);
   const [audienceSlots, setAudienceSlots] = useState<string[]>(['', '', '']);
+
+  // Custom API Key State
+  const [customGeminiKey, setCustomGeminiKey] = useState(() => localStorage.getItem('blent_custom_gemini_key') || '');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [availableImageModels, setAvailableImageModels] = useState<{ id: string; displayName: string }[]>([]);
+  const [preferredModel, setPreferredModel] = useState(() => getPreferredImageModel());
+  const [isDetectingModels, setIsDetectingModels] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -189,6 +200,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
         .eq('id', user.id);
 
       if (error) throw error;
+
+      // Save custom API key to localStorage
+      if (customGeminiKey.trim()) {
+        localStorage.setItem('blent_custom_gemini_key', customGeminiKey.trim());
+      } else {
+        localStorage.removeItem('blent_custom_gemini_key');
+      }
+
       onUpdateProfile(profile);
       toast.success('Perfil atualizado com sucesso!');
     } catch (err) {
@@ -645,6 +664,139 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ userEmail, initialProf
                     </div>
                   )}
 
+                </div>
+
+                <div className="relative z-10 pt-6 border-t border-slate-200 dark:border-white/[0.06]">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-500 dark:text-violet-400">Sua Chave API de IA (Opcional)</label>
+                        {customGeminiKey.trim().length > 0 && (
+                          <span 
+                            className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider text-white shadow-sm"
+                            style={{ backgroundColor: PROVIDERS[detectProvider(customGeminiKey)].color }}
+                          >
+                            {PROVIDERS[detectProvider(customGeminiKey)].name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[11px] font-medium text-slate-500 dark:text-white/40 leading-relaxed mb-2">
+                      Por padrão, utilizamos a inteligência artificial do nosso servidor. Se você possui sua própria chave da API do Google Gemini e deseja usá-la (para limites maiores ou uso pessoal independente), insira-a abaixo. Os dados ficam salvos de forma segura apenas no seu navegador.
+                    </p>
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                        <Settings className="w-4 h-4 text-slate-400 dark:text-white/20" />
+                      </div>
+                      <input
+                        type={showApiKey ? "text" : "password"}
+                        value={customGeminiKey}
+                        onChange={(e) => setCustomGeminiKey(e.target.value)}
+                        placeholder="AIzaSy..."
+                        className="w-full py-4 pl-12 pr-12 bg-slate-100 dark:bg-white/[0.02] border border-slate-300 dark:border-white/[0.08] rounded-2xl text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.04] transition-all text-sm font-bold font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/60 transition-colors"
+                      >
+                        {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+
+                    {/* DETECÇÃO DE MODELOS / INFO DO PROVEDOR */}
+                    {customGeminiKey.trim().length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        {detectProvider(customGeminiKey) === 'gemini' && (
+                          <>
+                            <div className="flex items-center justify-between">
+                              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-500 dark:text-violet-400 flex items-center gap-1.5">
+                                <Sparkles className="w-3 h-3" />
+                                Modelo de Geração de Imagem
+                              </label>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  setIsDetectingModels(true);
+                                  const models = await listImageModels(customGeminiKey.trim());
+                                  setAvailableImageModels(models);
+                                  if (models.length === 0) {
+                                    toast.error('Nenhum modelo de imagem encontrado. Verifique se a chave é válida.');
+                                  } else {
+                                    toast.success(`${models.length} modelo(s) de imagem encontrado(s)!`);
+                                  }
+                                  setIsDetectingModels(false);
+                                }}
+                                disabled={isDetectingModels}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-400 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                              >
+                                {isDetectingModels ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                                {isDetectingModels ? 'Detectando...' : 'Detectar Modelos'}
+                              </button>
+                            </div>
+
+                            <p className="text-[10px] font-medium text-slate-400 dark:text-white/30">
+                              Com sua chave, você tem acesso ilimitado e pode escolher modelos mais avançados como Nano Banana 2.
+                            </p>
+
+                            {availableImageModels.length > 0 && (
+                              <div className="space-y-2 bg-white/[0.02] border border-white/[0.06] rounded-xl p-3">
+                                {availableImageModels.map((m) => (
+                                  <label
+                                    key={m.id}
+                                    className={cn(
+                                      "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
+                                      preferredModel === m.id
+                                        ? "bg-violet-600/20 border border-violet-500/40"
+                                        : "bg-white/[0.02] border border-transparent hover:bg-white/[0.04]"
+                                    )}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="image-model"
+                                      value={m.id}
+                                      checked={preferredModel === m.id}
+                                      onChange={() => {
+                                        setPreferredModel(m.id);
+                                        setPreferredImageModel(m.id);
+                                        toast.success(`Modelo alterado para ${m.displayName}`);
+                                      }}
+                                      className="accent-violet-500 w-4 h-4"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-xs font-black text-white truncate">{m.displayName}</p>
+                                      <p className="text-[10px] font-bold text-white/30 font-mono truncate">{m.id}</p>
+                                    </div>
+                                    {preferredModel === m.id && (
+                                      <span className="text-[8px] font-black uppercase tracking-widest bg-violet-500/30 text-violet-300 px-2 py-0.5 rounded-md">Ativo</span>
+                                    )}
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                        
+                        {detectProvider(customGeminiKey) === 'openai' && (
+                          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-1">
+                            <p className="text-xs font-bold text-emerald-400">🚀 Modo OpenAI Ativado</p>
+                            <p className="text-[10px] font-medium text-slate-400 dark:text-white/50">
+                              Textos serão gerados usando <strong>GPT-4o Mini</strong> e imagens usando <strong>DALL-E 3</strong> (1024x1024).
+                            </p>
+                          </div>
+                        )}
+
+                        {detectProvider(customGeminiKey) === 'claude' && (
+                          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-1">
+                            <p className="text-xs font-bold text-amber-400">✨ Modo Claude Ativado</p>
+                            <p className="text-[10px] font-medium text-slate-400 dark:text-white/50">
+                              Textos serão gerados usando <strong>Claude 3.5 Sonnet</strong>. Como a Anthropic não gera imagens nativamente, a geração de imagens usará a quota gratuita do servidor com Gemini Flash.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

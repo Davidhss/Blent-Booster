@@ -14,9 +14,9 @@ const INITIAL_SLIDE: PostSlide = {
     titleLineHeight: 1,
     descriptionLineHeight: 1.5,
     contentSpacing: 16,
-    titleFontSize: 48,
-    descriptionFontSize: 18,
-    alignment: 'top'
+    titleFontSize: 30,
+    descriptionFontSize: 16,
+    alignment: 'center'
 };
 
 export const INITIAL_DATA: PostData = {

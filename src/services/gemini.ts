@@ -1,8 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { detectProvider, providerGenerateText, openaiGenerateImage, type AIProvider } from './aiProvider';
 
-// Tenta pegar a chave do VITE_GEMINI_API_KEY primeiro (para o frontend em produção)
-// E cai de volta para process.env.GEMINI_API_KEY no Dev SSR/Node
+// Tenta pegar a chave customizada do localStorage, senão cai na env
 const getApiKey = () => {
+  if (typeof window !== 'undefined') {
+    const customKey = localStorage.getItem('blent_custom_gemini_key');
+    if (customKey && customKey.trim().length > 0) {
+      console.log('[Gemini] Usando chave API customizada do usuário.');
+      return customKey.trim();
+    }
+  }
+
   const key = import.meta.env?.VITE_GEMINI_API_KEY ||
     (typeof process !== 'undefined' && process.env?.GEMINI_API_KEY) ||
     "";
@@ -10,12 +18,78 @@ const getApiKey = () => {
   if (!key) {
     console.error("FATAL ERROR: VITE_GEMINI_API_KEY is not defined in the environment! The app will crash.");
   }
+  console.log('[Gemini] Usando chave API do servidor (.env).');
   return key;
 };
 
-const ai = new GoogleGenAI({
-  apiKey: getApiKey() || 'dummy_key_to_prevent_crash', // Fallback to prevent immediate crash if key is missing, although requests will fail
-});
+// Proxy para instanciar dinamicamente, garantindo que pegue a chave atualizada do localStorage
+const ai = {
+  get models() {
+    const instance = new GoogleGenAI({
+      apiKey: getApiKey() || 'dummy_key_to_prevent_crash'
+    });
+    return instance.models;
+  }
+};
+
+// =============================================
+// MULTI-PROVIDER TEXT HELPER
+// =============================================
+
+/** Retorna provedor + chave customizada (ou null se usar servidor Gemini) */
+const getCustomProviderInfo = (): { provider: AIProvider; apiKey: string } | null => {
+  if (typeof window === 'undefined') return null;
+  const key = localStorage.getItem('blent_custom_gemini_key');
+  if (!key || !key.trim()) return null;
+  return { provider: detectProvider(key), apiKey: key.trim() };
+};
+
+/**
+ * Tenta gerar texto pelo provedor customizado (OpenAI/Claude).
+ * Se o provedor for Gemini ou não houver chave customizada, usa o SDK do Gemini.
+ */
+const multiProviderGenerateText = async (
+  prompt: string,
+  opts?: { jsonMode?: boolean; systemPrompt?: string }
+): Promise<string> => {
+  const custom = getCustomProviderInfo();
+  if (custom && custom.provider !== 'gemini') {
+    try {
+      const jsonPrompt = opts?.jsonMode
+        ? prompt + '\n\nIMPORTANTE: Retorne APENAS um JSON válido, sem texto adicional, sem markdown, sem ```json.'
+        : prompt;
+      const result = await providerGenerateText(custom.apiKey, custom.provider, jsonPrompt, opts);
+      console.log(`[AI] Texto gerado via ${custom.provider}`);
+      return result;
+    } catch (err) {
+      console.warn(`[AI] Falha no provedor ${custom.provider}, voltando ao Gemini:`, err);
+    }
+  }
+  // Fallback: usa Gemini SDK
+  return ''; // sinaliza para caller usar o Gemini SDK normalmente
+};
+
+/**
+ * Wrapper completo: tenta provedor customizado, se retornar vazio usa Gemini SDK.
+ * Para funções que precisam de JSON, passa jsonMode: true.
+ */
+const generateWithProvider = async (
+  prompt: string,
+  geminiModel: string,
+  opts?: { jsonMode?: boolean; geminiConfig?: any }
+): Promise<string> => {
+  // Tentar provedor customizado primeiro
+  const customResult = await multiProviderGenerateText(prompt, { jsonMode: opts?.jsonMode });
+  if (customResult) return customResult;
+
+  // Fallback: Gemini SDK
+  const response = await ai.models.generateContent({
+    model: geminiModel,
+    contents: prompt,
+    config: opts?.geminiConfig || (opts?.jsonMode ? { responseMimeType: 'application/json' } : undefined),
+  });
+  return response.text || '';
+};
 
 export const analyzePostStyle = async (imageData: string) => {
   const model = "gemini-2.5-flash";
@@ -92,15 +166,8 @@ export const generateAudienceQuestions = async (
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-
-    return JSON.parse(response.text || '{"insights": []}');
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    return JSON.parse(result || '{"insights": []}');
   } catch (error) {
     console.error("Error generating questions:", error);
     return { insights: [] };
@@ -112,36 +179,193 @@ export const generateCaption = async (postContent: string) => {
   const prompt = `Crie uma legenda engajadora para o Instagram baseada neste conteúdo: "${postContent}". Use emojis, hashtags relevantes e um tom que incentive comentários.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-    });
-    return response.text;
+    const result = await generateWithProvider(prompt, model);
+    return result || "Erro ao gerar legenda.";
   } catch (error) {
     console.error("Error generating caption:", error);
     return "Erro ao gerar legenda.";
   }
 };
+// =============================================
+// IMAGEM COM IA — SISTEMA INTELIGENTE
+// =============================================
 
-export const generateBackgroundImages = async (prompt: string, userPrompt?: string) => {
+// Chave do servidor dedicada para geração de imagens
+const SERVER_IMAGE_API_KEY = 'AIzaSyDLVpDVtbyzAxezqbZUtAgQAuCVpdEEjFU';
+const DAILY_IMAGE_LIMIT = 8; // Limite diário para quem usa chave do servidor
+const DEFAULT_IMAGE_MODEL = 'gemini-2.5-flash-preview-image-generation';
+
+/** Verifica se o usuário tem chave customizada */
+export const hasCustomApiKey = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const key = localStorage.getItem('blent_custom_gemini_key');
+  return !!(key && key.trim().length > 0);
+};
+
+/** Retorna o modelo de imagem preferido salvo pelo usuário */
+export const getPreferredImageModel = (): string => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('blent_preferred_image_model');
+    if (saved && saved.trim()) return saved.trim();
+  }
+  return DEFAULT_IMAGE_MODEL;
+};
+
+/** Salva o modelo de imagem preferido */
+export const setPreferredImageModel = (model: string) => {
+  localStorage.setItem('blent_preferred_image_model', model);
+};
+
+/** Lista modelos de imagem disponíveis para uma API key */
+export const listImageModels = async (apiKey: string): Promise<{ id: string; displayName: string }[]> => {
   try {
-    const response = await fetch('/api/generate-images', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, userPrompt }),
-    });
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    
+    const imageModels: { id: string; displayName: string }[] = [];
+    for (const model of data.models || []) {
+      const name: string = model.name || '';
+      const displayName: string = model.displayName || name;
+      const methods: string[] = model.supportedGenerationMethods || [];
+      
+      // Filtrar modelos que suportam geração de conteúdo ou predict E têm "image" ou "imagen" no nome
+      if ((methods.includes('generateContent') || methods.includes('predict')) && /image|imagen/i.test(name)) {
+        // Extrair apenas o ID (sem "models/" prefix)
+        const id = name.replace('models/', '');
+        imageModels.push({ id, displayName });
+      }
+    }
+    
+    return imageModels;
+  } catch (error) {
+    console.error('[Gemini] Erro ao listar modelos:', error);
+    return [];
+  }
+};
 
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error("Image generation server error:", err);
-      return [];
+/** Verifica e atualiza o contador diário de imagens (para chave do servidor) */
+export const checkImageDailyLimit = (): { allowed: boolean; used: number; limit: number } => {
+  if (typeof window === 'undefined') return { allowed: false, used: 0, limit: DAILY_IMAGE_LIMIT };
+  
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  const savedDate = localStorage.getItem('blent_image_gen_date');
+  let count = parseInt(localStorage.getItem('blent_image_gen_count') || '0', 10);
+  
+  // Reset se é um novo dia
+  if (savedDate !== today) {
+    count = 0;
+    localStorage.setItem('blent_image_gen_date', today);
+    localStorage.setItem('blent_image_gen_count', '0');
+  }
+  
+  return { allowed: count < DAILY_IMAGE_LIMIT, used: count, limit: DAILY_IMAGE_LIMIT };
+};
+
+/** Incrementa o contador diário */
+const incrementImageCount = () => {
+  const today = new Date().toISOString().split('T')[0];
+  localStorage.setItem('blent_image_gen_date', today);
+  const current = parseInt(localStorage.getItem('blent_image_gen_count') || '0', 10);
+  localStorage.setItem('blent_image_gen_count', String(current + 1));
+};
+
+export const generateBackgroundImages = async (prompt: string, userPrompt?: string, modelOverride?: string): Promise<string[]> => {
+  try {
+    const usingCustomKey = hasCustomApiKey();
+    const apiKey = usingCustomKey
+      ? localStorage.getItem('blent_custom_gemini_key')!.trim()
+      : SERVER_IMAGE_API_KEY;
+    
+    // Verificar limite diário para quem usa chave do servidor
+    if (!usingCustomKey) {
+      const { allowed, used, limit } = checkImageDailyLimit();
+      if (!allowed) {
+        console.warn(`[AI] Limite de imagens atingido (${used}/${limit}).`);
+        return [];
+      }
     }
 
-    const data = await response.json();
-    return (data.images || []) as string[];
-  } catch (error) {
-    console.error("Error calling image generation endpoint:", error);
-    return [];
+    const fullPrompt = userPrompt
+      ? `${userPrompt}. Contexto visual: ${prompt}`
+      : `Gere uma imagem de fundo premium para um post de redes sociais sobre: "${prompt}". Estilo: fotografia de alta qualidade, iluminação dramática, cores ricas e composição profissional. NÃO inclua texto na imagem, somente a arte visual.`;
+
+    // Detectar provedor para imagens
+    const provider = usingCustomKey ? detectProvider(apiKey) : 'gemini';
+    console.log(`[AI] Gerando imagem via ${provider} | Chave: ${usingCustomKey ? 'customizada' : 'servidor'}`);
+
+    let images: string[] = [];
+
+    if (provider === 'openai') {
+      // OpenAI → DALL-E 3
+      images = await openaiGenerateImage(apiKey, fullPrompt);
+    } else {
+      // Gemini (padrão + Claude fallback para imagem)
+      const geminiKey = provider === 'claude' ? SERVER_IMAGE_API_KEY : apiKey;
+      const model = modelOverride || (usingCustomKey && provider === 'gemini' ? getPreferredImageModel() : DEFAULT_IMAGE_MODEL);
+      const instance = new GoogleGenAI({ apiKey: geminiKey });
+
+      if (model.startsWith('imagen')) {
+        // Modelos Imagen 3 e 4 usam o endpoint dedicado de gerar imagens (predict fallback interno)
+        const response = await instance.models.generateImages({
+          model,
+          prompt: fullPrompt,
+          config: {
+            numberOfImages: 1,
+            outputMimeType: 'image/jpeg',
+          }
+        });
+        
+        if (response.generatedImages && response.generatedImages.length > 0) {
+          for (const img of response.generatedImages) {
+            if (img.image && img.image.imageBytes) {
+              images.push(`data:image/jpeg;base64,${img.image.imageBytes}`);
+            }
+          }
+        }
+      } else {
+        // Modelos Flash (gemini-2.5-flash) suportam IMAGE multimodality no generateContent
+        const response = await instance.models.generateContent({
+          model,
+          contents: fullPrompt,
+          config: {
+            responseModalities: ['IMAGE', 'TEXT'],
+          }
+        });
+
+        if (response.candidates?.[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData?.mimeType?.startsWith('image/')) {
+              images.push(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`);
+            }
+          }
+        }
+      }
+    }
+
+    // Incrementar contador se usando chave do servidor
+    if (!usingCustomKey && images.length > 0) {
+      incrementImageCount();
+    }
+
+    return images;
+  } catch (error: any) {
+    console.error("Error generating background image:", error);
+    let errorMessage = error.message || "Erro desconhecido ao gerar imagem.";
+    const status = error.status || error?.response?.status;
+    
+    // Categorizar erros comuns da API
+    if (errorMessage.includes('paid plans') || errorMessage.includes('PAY_AS_YOU_GO') || status === 400) {
+      errorMessage = "PAY_AS_YOU_GO_REQUIRED";
+    } else if (errorMessage.includes('Quota exceeded') || status === 429) {
+      errorMessage = "QUOTA_EXCEEDED";
+    } else if (status === 403 || status === 401) {
+      errorMessage = "INVALID_API_KEY";
+    } else {
+      errorMessage = `Erro da API: ${errorMessage}`;
+    }
+    
+    throw new Error(errorMessage);
   }
 };
 
@@ -153,17 +377,10 @@ export const generateQuote = async (topic: string): Promise<{ text: string; auth
   - author: o nome do autor da frase.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-
-    return JSON.parse(response.text || "null");
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    return JSON.parse(result || "null");
   } catch (error) {
-    console.error("Error generating quote with Gemini:", error);
+    console.error("Error generating quote:", error);
     return null;
   }
 };
@@ -178,15 +395,8 @@ export const suggestTextVariations = async (title: string, description: string) 
   Retorne um JSON com um array "variations" contendo objetos com "title" e "description".`;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-
-    return JSON.parse(response.text || '{"variations": []}');
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    return JSON.parse(result || '{"variations": []}');
   } catch (error) {
     console.error("Error suggesting variations:", error);
     return { variations: [] };
@@ -229,15 +439,8 @@ export const generateStorytellingScript = async (
   - visualCues: Dicas visuais (o que mostrar na tela, expressões, B-roll).`;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-
-    return JSON.parse(response.text || "{}");
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    return JSON.parse(result || "{}");
   } catch (error) {
     console.error("Error generating storytelling script:", error);
     return null;
@@ -262,15 +465,8 @@ export const generateAdScript = async (productInfo: string, targetAudience: stri
   Retorne um JSON com os campos: hook, body, cta, optimizationTips.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-
-    return JSON.parse(response.text || "{}");
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    return JSON.parse(result || "{}");
   } catch (error) {
     console.error("Error generating ad script:", error);
     return null;
@@ -297,15 +493,8 @@ export const optimizeIdea = async (ideaNote: string) => {
   - cta: A chamada de ação`;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      }
-    });
-
-    return JSON.parse(response.text || "{}");
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    return JSON.parse(result || "{}");
   } catch (error) {
     console.error("Error optimizing idea:", error);
     return null;
@@ -329,34 +518,8 @@ export const generateContentStrategy = async (product: string, audience: string)
   - description: string (Breve explicação do que se trata a ideia)`;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            ideas: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.NUMBER },
-                  title: { type: Type.STRING },
-                  purpose: { type: Type.STRING },
-                  description: { type: Type.STRING }
-                },
-                required: ["id", "title", "purpose", "description"]
-              }
-            }
-          },
-          required: ["ideas"]
-        }
-      }
-    });
-
-    return JSON.parse(response.text || '{"ideas": []}');
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    return JSON.parse(result || '{"ideas": []}');
   } catch (error) {
     console.error("Error generating content strategy:", error);
     return { ideas: [] };
@@ -387,27 +550,46 @@ export const expandContentIdea = async (
   Retorne um JSON com os campos: hook, content, cta, visualNotes.`;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            hook: { type: Type.STRING, description: "Texto do topo do funil (atração)" },
-            content: { type: Type.STRING, description: "Desenvolvimento do meio do funil" },
-            cta: { type: Type.STRING, description: "Chamada para ação do fundo do funil" },
-            visualNotes: { type: Type.STRING, description: "Sugestões visuais e de edição" }
-          },
-          required: ["hook", "content", "cta", "visualNotes"]
-        }
-      }
-    });
-
-    return JSON.parse(response.text || "{}");
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    return JSON.parse(result || "{}");
   } catch (error) {
     console.error("Error expanding content idea:", error);
     return null;
+  }
+};
+
+export const generateCarouselContent = async (topic: string, numSlides: number) => {
+  const model = "gemini-2.5-flash";
+  const prompt = `Você é um copywriter de elite para redes sociais.
+  Gere um carrossel completo de altíssimo impacto para Instagram/LinkedIn.
+  
+  Tema: "${topic}"
+  Número de slides desejado: ${numSlides}
+  
+  O carrossel deve ter a seguinte estrutura:
+  - Slide 1 (Capa): Um título (gancho) irresistível e uma descrição muito curta.
+  - Slides Intermediários: Conteúdo de valor e desenvolvimento da ideia. Títulos mais curtos e textos diretos ao ponto, persuasivos.
+  - ÚLTIMO Slide: CTAs (Chamada para Ação) claras para seguir, comentar ou comprar algo.
+  
+  Retorne EXATAMENTE um JSON na seguinte estrutura de array:
+  {
+    "slides": [
+      {
+        "title": "Título do slide 1",
+        "description": "Texto do corpo do slide 1 (se houver)"
+      },
+      ...
+    ]
+  }
+  
+  Assegure-se de gerar exatamente ${numSlides} slides no array "slides".`;
+
+  try {
+    const result = await generateWithProvider(prompt, model, { jsonMode: true });
+    const parsed = JSON.parse(result || '{"slides": []}');
+    return parsed.slides || [];
+  } catch (error) {
+    console.error("Error generating carousel:", error);
+    return [];
   }
 };
