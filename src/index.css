@@ -14,6 +14,8 @@
   }
 }
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
