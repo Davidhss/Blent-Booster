@@ -109,6 +109,8 @@ function MainApp() {
   const [isGeneratingCarousel, setIsGeneratingCarousel] = useState(false);
   const [carouselTopic, setCarouselTopic] = useState('');
   const [carouselSlideCount, setCarouselSlideCount] = useState(5);
+  const [generateCarouselImages, setGenerateCarouselImages] = useState(false);
+  const [generateCarouselImagesOnLastSlide, setGenerateCarouselImagesOnLastSlide] = useState(false);
   const [isCarouselOpen, setIsCarouselOpen] = useState(false);
   const [initialAdsData, setInitialAdsData] = useState<AdScript | null>(null);
   const [initialStoryData, setInitialStoryData] = useState<any>(null);
@@ -332,21 +334,80 @@ function MainApp() {
       const slidesContent = await generateCarouselContent(carouselTopic, carouselSlideCount);
       
       if (slidesContent && slidesContent.length > 0) {
-        setPostData(prev => {
-          const newSlides = slidesContent.map((sc: any, idx: number) => ({
-            ...INITIAL_DATA.slides[0], // Base slide
-            id: crypto.randomUUID(),
-            title: sc.title,
-            description: sc.description || '',
-            layout: 'text-only' as const,
-            imageConfig: { scale: 1, x: 0, y: 0, brightness: 1 }
-          }));
-          return {
-            ...prev,
-            slides: newSlides.slice(0, MAX_SLIDES)
-          };
-        });
+        let finalSlides = slidesContent.map((sc: any, idx: number) => ({
+          ...INITIAL_DATA.slides[0], // Base slide
+          id: crypto.randomUUID(),
+          title: sc.title,
+          description: sc.description || '',
+          layout: 'text-only' as const,
+          imageConfig: { scale: 1, x: 0, y: 0, brightness: 1 }
+        }));
+        
+        // Exibe o texto logo de cara
+        setPostData(prev => ({
+          ...prev,
+          slides: finalSlides.slice(0, MAX_SLIDES)
+        }));
         setCurrentSlideIndex(0);
+
+        if (generateCarouselImages) {
+          toast.info('Gerando imagens de fundo. Isso pode levar alguns segundos...');
+          const { generateBackgroundImages } = await import('./services/gemini');
+          const imagePromises = finalSlides.map(async (slide, idx) => {
+            const isLastSlide = idx === finalSlides.length - 1;
+            if (isLastSlide && !generateCarouselImagesOnLastSlide) return slide;
+            
+            try {
+              const images = await generateBackgroundImages(slide.title, undefined, undefined);
+              if (images && images.length > 0) {
+                return {
+                  ...slide,
+                  imageUrl: images[0],
+                  layout: ['tweet', 'info', 'minimal', 'gradient', 'editorial', 'side-card'].includes(postData.templateType) ? 'split-v' : 'image-bg',
+                  bgBrightness: ['tweet', 'info', 'minimal', 'gradient', 'editorial', 'side-card'].includes(postData.templateType) ? 1 : 0.5
+                };
+              }
+            } catch (e) {
+              console.error('Failed to generate image for slide', idx, e);
+            }
+            return slide;
+          });
+          
+          finalSlides = await Promise.all(imagePromises);
+
+          // Identificar se o primaryColor é muito escuro/claro e ajustar o texto se estivermos usando split-v
+          // Como geramos os templates majoritariamente com split-v ou image-bg
+          setPostData(prev => {
+            let nextSecondaryColor = prev.secondaryColor;
+            
+            // Checar luminosidade do fundo para split-v
+            const hasSplitV = finalSlides.some(s => s.layout === 'split-v');
+            if (hasSplitV) {
+              const hex = prev.primaryColor.replace('#', '');
+              if (hex.length === 6) {
+                const r = parseInt(hex.substring(0, 2), 16);
+                const g = parseInt(hex.substring(2, 4), 16);
+                const b = parseInt(hex.substring(4, 6), 16);
+                // Fórmula de percepção de brilho (W3C standard)
+                const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                
+                // Se for muito escuro, forçar a cor do texto para clara, e vice versa
+                if (brightness < 128) {
+                  nextSecondaryColor = '#FFFFFF';
+                } else {
+                  nextSecondaryColor = '#1A1A1A';
+                }
+              }
+            }
+
+            return {
+              ...prev,
+              secondaryColor: nextSecondaryColor,
+              slides: finalSlides.slice(0, MAX_SLIDES)
+            };
+          });
+        }
+
         toast.success('Carrossel gerado com sucesso!');
         setCarouselTopic('');
       } else {
@@ -755,7 +816,8 @@ function MainApp() {
                                   </h2>
                                   <div className="grid grid-cols-2 gap-2">
                                     {(postData.templateType === 'info' ? ['text-only', 'image-bg', 'split-h', 'split-v', 'big-number'] :
-                                      postData.templateType === 'tweet' ? ['text-only', 'image-bg', 'split-v'] : // maping default formats to what makes sense
+                                      postData.templateType === 'tweet' ? ['text-only', 'split-v'] : 
+                                      ['minimal', 'gradient', 'editorial', 'side-card'].includes(postData.templateType) ? ['text-only', 'image-bg', 'split-v'] : 
                                         ['text-only', 'image-bg']).map((layout) => {
                                           const layoutName = layout as SlideLayout;
                                           return (
@@ -1031,7 +1093,18 @@ function MainApp() {
                                         <input
                                           type="color"
                                           value={postData.primaryColor}
-                                          onChange={(e) => setPostData(prev => ({ ...prev, primaryColor: e.target.value }))}
+                                          onChange={(e) => {
+                                            const newColor = e.target.value;
+                                            const r = parseInt(newColor.slice(1, 3), 16);
+                                            const g = parseInt(newColor.slice(3, 5), 16);
+                                            const b = parseInt(newColor.slice(5, 7), 16);
+                                            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                                            setPostData(prev => ({ 
+                                              ...prev, 
+                                              primaryColor: newColor,
+                                              secondaryColor: luminance > 0.5 ? '#1A1A1A' : '#FFFFFF'
+                                            }));
+                                          }}
                                           className="w-6 h-6 rounded-lg cursor-pointer border-none bg-transparent"
                                         />
                                         <span className="text-[10px] font-mono font-bold uppercase text-white/80">{postData.primaryColor}</span>
@@ -1071,7 +1144,17 @@ function MainApp() {
                                     {['#ffffff', '#000000', '#0f0f13', '#1e1b4b', '#f0f9ff', '#fbbf24', '#0d0d12', '#2e1065'].map(color => (
                                       <button
                                         key={color}
-                                        onClick={() => setPostData(prev => ({ ...prev, primaryColor: color }))}
+                                        onClick={() => {
+                                          const r = parseInt(color.slice(1, 3), 16);
+                                          const g = parseInt(color.slice(3, 5), 16);
+                                          const b = parseInt(color.slice(5, 7), 16);
+                                          const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                                          setPostData(prev => ({ 
+                                            ...prev, 
+                                            primaryColor: color,
+                                            secondaryColor: luminance > 0.5 ? '#1A1A1A' : '#FFFFFF'
+                                          }));
+                                        }}
                                         className={cn(
                                           "w-6 h-6 rounded-full border border-white/10 transition-transform hover:scale-110",
                                           postData.primaryColor === color && "ring-2 ring-violet-500 ring-offset-2 ring-offset-[#14141e]"
@@ -1408,6 +1491,35 @@ function MainApp() {
                                             className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-violet-500"
                                           />
                                         </div>
+
+                                        <div className="space-y-3 pt-2">
+                                          <label className="flex items-center gap-2 cursor-pointer group">
+                                            <input
+                                              type="checkbox"
+                                              checked={generateCarouselImages}
+                                              onChange={(e) => setGenerateCarouselImages(e.target.checked)}
+                                              className="w-4 h-4 rounded text-violet-600 bg-white/5 border-white/20 focus:ring-violet-500/50 cursor-pointer transition-colors"
+                                            />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/50 group-hover:text-white/80 transition-colors">
+                                              Gerar imagens de fundo com IA
+                                            </span>
+                                          </label>
+                                          
+                                          {generateCarouselImages && (
+                                            <label className="flex items-center gap-2 cursor-pointer group pl-6">
+                                              <input
+                                                type="checkbox"
+                                                checked={generateCarouselImagesOnLastSlide}
+                                                onChange={(e) => setGenerateCarouselImagesOnLastSlide(e.target.checked)}
+                                                className="w-4 h-4 rounded text-violet-600 bg-white/5 border-white/20 focus:ring-violet-500/50 cursor-pointer transition-colors"
+                                              />
+                                              <span className="text-[10px] font-black uppercase tracking-widest text-white/50 group-hover:text-white/80 transition-colors">
+                                                Gerar imagem também no último slide (CTA)
+                                              </span>
+                                            </label>
+                                          )}
+                                        </div>
+
                                         <button
                                           onClick={handleGenerateCarousel}
                                           disabled={isGeneratingCarousel || !carouselTopic.trim()}
