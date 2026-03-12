@@ -9,6 +9,14 @@ import {
 } from 'lucide-react';
 import { Blent_PLANS } from '../config/plans';
 
+declare global {
+    interface Window {
+        fbq: any;
+        _fbq: any;
+    }
+}
+const fbq = (...args: any[]) => window.fbq && window.fbq(...args);
+
 interface BlentLandingPageProps {
     onGoToLogin: () => void;
     onGoToSignup: () => void;
@@ -31,15 +39,34 @@ const FadeIn = ({ children, delay = 0, className = '' }: { children: React.React
 };
 
 export function BlentLandingPage({ onGoToLogin, onGoToSignup }: BlentLandingPageProps) {
-    const [scrollY, setScrollY] = useState(0);
+    const [navScrolled, setNavScrolled] = useState(false);
 
     useEffect(() => {
-        const handleScroll = () => setScrollY(window.scrollY);
+        const handleScroll = () => {
+            const isScrolled = window.scrollY > 60;
+            if (isScrolled !== navScrolled) {
+                setNavScrolled(isScrolled);
+            }
+        };
         window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
-    const navScrolled = scrollY > 60;
+        // Facebook Pixel Script Injection
+        if (!window.fbq) {
+            (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+                if (f.fbq) return; n = f.fbq = function () {
+                    n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+                };
+                if (!f._fbq) f._fbq = n; n.push = n; n.loaded = !0; n.version = '2.0';
+                n.queue = []; t = b.createElement(e); t.async = !0;
+                t.src = v; s = b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t, s);
+            })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+            window.fbq('init', '34803642885900965');
+            window.fbq('track', 'PageView');
+        }
+
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [navScrolled]);
 
     return (
         <div className="min-h-screen bg-[#06060f] text-white overflow-x-hidden font-sans selection:bg-violet-600/30 selection:text-violet-400">
@@ -321,101 +348,134 @@ export function BlentLandingPage({ onGoToLogin, onGoToSignup }: BlentLandingPage
             </section>
 
             {/* Pricing */}
-            <section id="pricing" className="py-32 px-6 relative z-10 bg-[#0a0a0f] border-b border-[#1a1a28]">
-                <div className="max-w-6xl mx-auto">
-                    <div className="text-center mb-16">
+            <section id="pricing" className="py-32 px-6 relative z-10 bg-[#040406] border-b border-[#1a1a28] overflow-visible">
+                {/* Background Ambient Glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-[radial-gradient(ellipse,rgba(139,92,246,0.06)_0%,transparent_70%)] pointer-events-none" />
+
+                <div className="max-w-6xl mx-auto relative z-10">
+                    <div className="text-center mb-24">
                         <FadeIn>
-                            <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 font-bold mb-4">Planos</p>
-                            <h2 className="font-['Syne'] text-4xl md:text-[52px] font-extrabold mb-4">Simples. <i className="not-italic text-violet-400 font-normal">Sem taxa escondida.</i></h2>
-                            <p className="text-lg text-white/50 mb-2 font-light">Todas as funcionalidades principais em qualquer plano.</p>
+                            <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full border border-violet-500/20 bg-violet-500/10 text-violet-400 text-[11px] font-bold uppercase tracking-widest mb-6"><Sparkles className="w-3 h-3" /> Investimento</div>
+                            <h2 className="font-['Syne'] text-4xl md:text-[56px] font-extrabold mb-6 tracking-tight">Um valor surreal pelo<br/><i className="not-italic text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400 font-normal">ecossistema completo.</i></h2>
+                            <p className="text-lg text-white/50 mb-2 font-light max-w-2xl mx-auto">Não bloqueamos funcionalidades essenciais. Escolha apenas o tempo de acesso.</p>
                             <p className="text-sm text-white/30">Acesso imediato após o pagamento. Sem contrato. Cancele quando quiser.</p>
                         </FadeIn>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-1 md:gap-[2px] bg-[#1a1a28] rounded-[2rem] overflow-hidden p-[2px] max-w-5xl mx-auto">
+                    <div className="flex flex-col lg:flex-row items-stretch justify-center gap-6 lg:gap-8 max-w-6xl mx-auto px-4 lg:px-0">
                         {/* Mensal */}
-                        <div className="bg-[#0e0e14] p-10 flex flex-col relative">
-                            <div className="text-xs font-bold text-white/40 uppercase tracking-[0.2em] mb-4">Mensal</div>
-                            <div className="font-['Syne'] text-[52px] font-extrabold mb-2 leading-none flex items-start gap-1">
-                                <span className="text-xl mt-2 tracking-normal">R$</span>49
+                        <FadeIn delay={0.1} className="flex-1 max-w-[360px] mx-auto w-full mt-4">
+                            <div className="bg-[#09090e] p-10 flex flex-col relative h-full rounded-[2rem] border border-white/[0.08] hover:border-white/20 transition-all duration-500 group shadow-2xl hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+                                <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent rounded-[2rem] pointer-events-none" />
+                                <div className="text-xs font-bold text-white/40 uppercase tracking-[0.25em] mb-4">Mensal</div>
+                                <div className="font-['Syne'] text-[52px] font-extrabold mb-2 leading-none flex items-start gap-1 text-white">
+                                    <span className="text-xl mt-2 tracking-normal text-white/40 font-medium">R$</span>49
+                                </div>
+                                <div className="text-sm text-white/40 font-medium mb-8 h-5">O plano base para começar</div>
+                                <hr className="border-white/[0.08] mb-8" />
+                                <ul className="space-y-5 mb-10 flex-1 relative z-10">
+                                    {[
+                                        'Blent Boost — 8 estilos virais',
+                                        'Personalização completa',
+                                        'IA para otimizar a copy',
+                                        'Banco de Ideias completo',
+                                        'Planner editorial visual'
+                                    ].map((ft, i) => (
+                                        <li key={i} className="flex gap-4 text-white/70 text-[14px] items-start font-light">
+                                            <div className="mt-0.5 w-5 h-5 rounded-full bg-white/5 flex items-center justify-center shrink-0 border border-white/10 group-hover:border-white/20 transition-colors">
+                                                <Check className="w-3 h-3 text-white/60" />
+                                            </div>
+                                            <span>{ft}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onGoToSignup} className="relative z-10 w-full py-4 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 font-bold transition-all mt-auto">Começar no Mensal</motion.button>
                             </div>
-                            <div className="text-sm text-violet-400 font-medium mb-8 h-5"></div>
-                            <hr className="border-white/[0.06] mb-8" />
-                            <ul className="space-y-4 mb-10 flex-1">
-                                {[
-                                    'Blent Boost — 8 estilos virais',
-                                    'Personalização completa',
-                                    'IA para otimizar a copy',
-                                    'Banco de Ideias completo',
-                                    'Planner editorial visual'
-                                ].map((ft, i) => (
-                                    <li key={i} className="flex gap-3 text-white/60 text-[13px] items-start">
-                                        <Check className="w-4 h-4 text-violet-400 shrink-0" />
-                                        <span>{ft}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onGoToSignup} className="w-full py-4 rounded-xl border border-[#1a1a28] text-white/60 hover:text-white hover:bg-violet-600/10 hover:border-violet-500/30 font-bold transition-all">Começar no Mensal</motion.button>
-                        </div>
+                        </FadeIn>
 
                         {/* Trimestral */}
-                        <motion.div whileHover={{ scale: 1.03 }} className="bg-[#0a0a16] p-10 flex flex-col relative scale-[1.02] z-10 shadow-2xl shadow-violet-500/10 border border-violet-500/40 rounded-2xl -mx-1">
-                            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-purple-500 via-violet-500 to-purple-500 animate-[pulse_3s_ease-in-out_infinite]" />
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-violet-600 text-black text-[10px] uppercase tracking-widest font-black px-4 py-1.5 rounded-full whitespace-nowrap shadow-[0_0_15px_rgba(139,92,246,0.4)]">Mais popular</div>
-                            <div className="text-xs font-bold text-white/40 uppercase tracking-[0.2em] mb-4 mt-2">Trimestral</div>
-                            <div className="font-['Syne'] text-[52px] font-extrabold mb-2 leading-none flex items-start gap-1 text-white">
-                                <span className="text-xl mt-2 tracking-normal">R$</span>129<span className="text-xl mt-2 tracking-normal">,90</span>
-                            </div>
-                            <div className="text-xs text-violet-400 font-medium mb-8">Equivale a R$43/mês — economia de 12%</div>
-                            <hr className="border-white/[0.06] mb-8" />
-                            <ul className="space-y-4 mb-10 flex-1">
-                                {[
-                                    'Blent Boost — 8 estilos virais',
-                                    'Personalização completa',
-                                    'IA para otimizar a copy',
-                                    'Banco de Ideias completo',
-                                    'Planner editorial visual'
-                                ].map((ft, i) => (
-                                    <li key={i} className="flex gap-3 text-white/80 text-[13px] items-start">
-                                        <Check className="w-4 h-4 text-violet-400 shrink-0" />
-                                        <span>{ft}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onGoToSignup} className="relative w-full py-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-bold shadow-[0_0_30px_rgba(139,92,246,0.3)] hover:shadow-[0_0_50px_rgba(139,92,246,0.5)] transition-all overflow-hidden border border-violet-500/50 group">
-                                <span className="relative z-10 flex items-center justify-center gap-2">Quero esse plano <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" /></span>
-                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-                            </motion.button>
-                        </motion.div>
+                        <FadeIn delay={0.2} className="flex-1 max-w-[400px] mx-auto w-full relative z-20 lg:-mt-6 lg:mb-2">
+                            {/* Outer Glow */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-violet-600/30 to-purple-600/5 blur-3xl -z-10 rounded-[2rem] opacity-60 group-hover:opacity-100 transition-opacity duration-500" />
+                            
+                            <motion.div whileHover={{ y: -8 }} className="bg-[#0b0b14] p-10 flex flex-col relative h-full rounded-[2rem] border border-violet-500/40 hover:border-violet-400/60 shadow-[0_20px_60px_rgba(139,92,246,0.15)] hover:shadow-[0_30px_80px_rgba(139,92,246,0.25)] transition-all duration-500 group object-visible">
+                                {/* Inner Gradient */}
+                                <div className="absolute inset-0 bg-gradient-to-b from-violet-500/[0.08] to-transparent rounded-[2rem] pointer-events-none" />
+                                
+                                {/* Animated Top Line */}
+                                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-violet-400 to-transparent opacity-80 rounded-t-[2rem]" />
+                                
+                                {/* Badge - Positioned outside overflow */}
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-30 bg-[#0a0a14] border border-violet-500/50 text-violet-300 text-[10px] uppercase tracking-[0.2em] font-black px-5 py-2 rounded-full whitespace-nowrap shadow-[0_0_20px_rgba(139,92,246,0.4)] flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                                    Mais popular
+                                </div>
+                                
+                                <div className="text-xs font-bold text-violet-400 uppercase tracking-[0.25em] mb-4 mt-2">Trimestral</div>
+                                <div className="font-['Syne'] text-[60px] font-extrabold mb-2 leading-none flex items-start gap-1 text-white drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">
+                                    <span className="text-xl mt-3 tracking-normal text-violet-400 font-medium">R$</span>129<span className="text-xl mt-3 tracking-normal text-white/40">,90</span>
+                                </div>
+                                <div className="text-xs text-violet-300 font-medium mb-8 bg-violet-500/10 w-fit px-3 py-1.5 rounded-lg border border-violet-500/20 shadow-inner">Equivale a R$43/mês — 12% OFF</div>
+                                <hr className="border-violet-500/20 mb-8" />
+                                <ul className="space-y-5 mb-10 flex-1 relative z-10">
+                                    {[
+                                        'Blent Boost — 8 estilos virais',
+                                        'Personalização completa',
+                                        'IA para otimizar a copy',
+                                        'Banco de Ideias completo',
+                                        'Planner editorial visual'
+                                    ].map((ft, i) => (
+                                        <li key={i} className="flex gap-4 text-white text-[14px] items-start font-medium leading-relaxed">
+                                            <div className="mt-0.5 w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0 border border-violet-400/40 shadow-[0_0_10px_rgba(139,92,246,0.2)]">
+                                                <Check className="w-3 h-3 text-violet-300" />
+                                            </div>
+                                            <span>{ft}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onGoToSignup} className="relative z-10 w-full py-5 rounded-xl bg-violet-600 font-bold shadow-[0_10px_30px_rgba(139,92,246,0.4)] hover:shadow-[0_15px_40px_rgba(139,92,246,0.6)] transition-all overflow-hidden border border-violet-400/50 group/btn mt-auto text-white">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 opacity-100" />
+                                    <span className="relative z-10 flex items-center justify-center gap-2 text-base">Assinar Trimestral <ArrowRight className="w-5 h-5 group-hover/btn:translate-x-1 transition-transform" /></span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_1.5s_infinite] skew-x-12" />
+                                </motion.button>
+                            </motion.div>
+                        </FadeIn>
 
                         {/* Anual */}
-                        <div className="bg-[#0e0e14] p-10 flex flex-col relative">
-                            <div className="text-xs font-bold text-white/40 uppercase tracking-[0.2em] mb-4">Anual</div>
-                            <div className="font-['Syne'] text-[52px] font-extrabold mb-2 leading-none flex items-start gap-1">
-                                <span className="text-xl mt-2 tracking-normal">R$</span>497<span className="text-xl mt-2 tracking-normal">,90</span>
-                            </div>
-                            <div className="text-xs text-violet-400 font-medium mb-8">Equivale a R$41/mês — economia de 15%</div>
-                            <hr className="border-white/[0.06] mb-8" />
-                            <ul className="space-y-4 mb-10 flex-1">
-                                {[
-                                    'Blent Boost — 8 estilos virais',
-                                    'Personalização completa',
-                                    'IA para otimizar a copy',
-                                    'Banco de Ideias completo',
-                                    'Planner editorial visual'
-                                ].map((ft, i) => (
-                                    <li key={i} className="flex gap-3 text-white/60 text-[13px] items-start">
-                                        <Check className="w-4 h-4 text-violet-400 shrink-0" />
-                                        <span>{ft}</span>
+                        <FadeIn delay={0.3} className="flex-1 max-w-[360px] mx-auto w-full mt-4">
+                            <div className="bg-[#09090e] p-10 flex flex-col relative h-full rounded-[2rem] border border-white/[0.08] hover:border-white/20 transition-all duration-500 group shadow-2xl hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)]">
+                                <div className="absolute inset-0 bg-gradient-to-b from-white/[0.04] to-transparent rounded-[2rem] pointer-events-none" />
+                                <div className="text-xs font-bold text-white/40 uppercase tracking-[0.25em] mb-4">Anual</div>
+                                <div className="font-['Syne'] text-[52px] font-extrabold mb-2 leading-none flex items-start gap-1 text-white">
+                                    <span className="text-xl mt-2 tracking-normal text-white/40 font-medium">R$</span>497<span className="text-xl mt-2 tracking-normal text-white/40">,90</span>
+                                </div>
+                                <div className="text-xs text-white/60 font-medium mb-8 bg-white/5 w-fit px-3 py-1.5 rounded-lg border border-white/10">Economia de 15% (R$41/mês)</div>
+                                <hr className="border-white/[0.08] mb-8" />
+                                <ul className="space-y-5 mb-10 flex-1 relative z-10">
+                                    {[
+                                        'Blent Boost — 8 estilos virais',
+                                        'Personalização completa',
+                                        'IA para otimizar a copy',
+                                        'Banco de Ideias completo',
+                                        'Planner editorial visual'
+                                    ].map((ft, i) => (
+                                        <li key={i} className="flex gap-4 text-white/70 text-[14px] items-start font-light">
+                                            <div className="mt-0.5 w-5 h-5 rounded-full bg-white/5 flex items-center justify-center shrink-0 border border-white/10 group-hover:border-white/20 transition-colors">
+                                                <Check className="w-3 h-3 text-white/60" />
+                                            </div>
+                                            <span>{ft}</span>
+                                        </li>
+                                    ))}
+                                    <li className="flex gap-4 text-violet-300 text-[14px] items-start font-medium mt-6 pt-5 border-t border-white/[0.08]">
+                                        <div className="mt-0.5 w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0 border border-violet-400/30">
+                                            <Star className="w-3 h-3 text-violet-400" fill="currentColor" />
+                                        </div>
+                                        <span>IA expande ideia em pauta completa no Banco</span>
                                     </li>
-                                ))}
-                                <li className="flex gap-3 text-violet-400 text-[13px] items-start">
-                                    <Star className="w-4 h-4 shrink-0" fill="currentColor" />
-                                    <span>IA no Banco de Ideias — expande sua ideia com repertório e pautas completas</span>
-                                </li>
-                            </ul>
-                            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onGoToSignup} className="w-full py-4 rounded-xl border border-[#1a1a28] text-white/60 hover:text-white hover:bg-violet-600/10 hover:border-violet-500/30 font-bold transition-all">Quero o Anual (IA)</motion.button>
-                        </div>
+                                </ul>
+                                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onGoToSignup} className="relative z-10 w-full py-4 rounded-xl border border-white/10 text-white/70 hover:text-white hover:bg-white/5 font-bold transition-all flex items-center justify-center gap-2 mt-auto">Assinar Anual (IA) <Star className="w-4 h-4 text-violet-400" fill="currentColor" /></motion.button>
+                            </div>
+                        </FadeIn>
                     </div>
                 </div>
             </section >
